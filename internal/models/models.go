@@ -28,6 +28,11 @@ type UserPsqlResponse struct {
 	UpdatedAt    string `bson:"updatedAt"  json:"updatedAt,omitempty"`
 }
 
+type NewUserResponse struct {
+	LastInsertedId int64
+	RowsAffected   int64
+}
+
 type LoginUser struct {
 	Username     string `bson:"username,omitempty"  json:"username,omitempty"`
 	Email        string `bson:"email,omitempty"  json:"email,omitempty"`

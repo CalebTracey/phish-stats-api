@@ -73,11 +73,12 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 	_, errs := s.PsqlService.InsertNewUser(ctx, exec)
 
 	if errs != nil && len(errs) > 0 {
+		for _, err := range errs {
+			log.Warnf("insert new user error: %v", err.Error())
+		}
+		//TODO probably remove these error logs and just have them log to warnings?
 		message.ErrorLog = errorLogs(errs, "New user error", http.StatusInternalServerError)
 		message.Status = strconv.Itoa(http.StatusInternalServerError)
-		response.Message = message
-		response.User = &models.UserPsqlResponse{}
-		return response
 	}
 
 	return models.UserResponse{
@@ -101,8 +102,8 @@ func (s *Service) LoginUser(ctx context.Context, userRequest models.User) models
 	var response models.UserResponse
 
 	foundUserExec := fmt.Sprintf(psql.FindUserByUsername, userRequest.Username)
-
 	foundUser, errs := s.PsqlService.FindUserByUsername(ctx, foundUserExec)
+
 	if errs != nil && len(errs) > 0 {
 		message.ErrorLog = errorLogs(errs, "User not found", http.StatusNotFound)
 		message.Status = strconv.Itoa(http.StatusNotFound)

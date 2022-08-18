@@ -12,7 +12,7 @@ import (
 //go:generate mockgen -destination=mockService.go -package=psql . ServiceI
 type ServiceI interface {
 	FindUserByUsername(ctx context.Context, query string) (*models.UserPsqlResponse, []error)
-	InsertNewUser(ctx context.Context, exec string) (sql.Result, []error)
+	InsertNewUser(ctx context.Context, exec string) (*models.NewUserResponse, []error)
 	UpdateAllTokens(ctx context.Context, exec string) error
 }
 
@@ -44,8 +44,9 @@ func (s *Service) FindUserByUsername(ctx context.Context, query string) (*models
 			&usr.Username,
 			&usr.Password,
 			&usr.Token,
-			&usr.RefreshToken,
 			&usr.CreatedAt,
+			&usr.UpdatedAt,
+			&usr.RefreshToken,
 		)
 		if err != nil {
 			log.Panicln(err)
@@ -55,19 +56,32 @@ func (s *Service) FindUserByUsername(ctx context.Context, query string) (*models
 	return &usr, nil
 }
 
-func (s *Service) InsertNewUser(ctx context.Context, exec string) (sql.Result, []error) {
-	errs := s.validateDbAction(exec)
+func (s *Service) InsertNewUser(ctx context.Context, exec string) (*models.NewUserResponse, []error) {
+	var errs []error
+	vErrs := s.validateDbAction(exec)
 
-	if errs != nil || len(errs) > 0 {
-		return nil, errs
+	if vErrs != nil || len(vErrs) > 0 {
+		return nil, vErrs
 	}
 
 	result, err := s.db.ExecContext(ctx, exec)
 	if err != nil {
-		return result, []error{fmt.Errorf("error retrieving data; err: %v", err)}
+		return nil, []error{fmt.Errorf("error retrieving data; err: %v", err)}
 	}
 
-	return result, nil
+	lastInsertedId, idErr := result.LastInsertId()
+	if idErr != nil {
+		errs = append(errs, idErr)
+	}
+	rowsAffected, rowErr := result.RowsAffected()
+	if rowErr != nil {
+		errs = append(errs, rowErr)
+	}
+
+	return &models.NewUserResponse{
+		LastInsertedId: lastInsertedId,
+		RowsAffected:   rowsAffected,
+	}, errs
 }
 
 func (s *Service) UpdateAllTokens(ctx context.Context, exec string) error {
