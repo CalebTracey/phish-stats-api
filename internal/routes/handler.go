@@ -138,7 +138,6 @@ func setUserResponse(res models.UserResponse) (models.LoginResponse, int) {
 		Email:        res.User.Email,
 		Token:        res.User.Token,
 		RefreshToken: res.User.RefreshToken,
-		UserId:       res.User.UserId,
 		Message: models.Message{
 			ErrorLog: res.Message.ErrorLog,
 			HostName: hn,

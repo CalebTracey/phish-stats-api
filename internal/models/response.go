@@ -38,7 +38,7 @@ type Song struct {
 }
 
 type UserResponse struct {
-	User    *User
+	User    *UserPsqlResponse
 	Message Message
 }
 
@@ -48,17 +48,17 @@ type AllUsersResponse struct {
 }
 
 type LoginResponse struct {
-	Username     *string `bson:"username,omitempty"  json:"username,omitempty"`
-	Email        *string `bson:"email,omitempty"  json:"email,omitempty"`
-	Token        *string `bson:"token,omitempty"  json:"token,omitempty"`
-	RefreshToken *string `bson:"refreshToken,omitempty"  json:"refreshToken,omitempty"`
+	Username     string  `bson:"username,omitempty"  json:"username,omitempty"`
+	Email        string  `bson:"email,omitempty"  json:"email,omitempty"`
+	Token        string  `bson:"token,omitempty"  json:"token,omitempty"`
+	RefreshToken string  `bson:"refreshToken,omitempty"  json:"refreshToken,omitempty"`
 	UserId       string  `bson:"userId,omitempty"  json:"userId,omitempty"`
 	Message      Message `json:"message,omitempty"`
 }
 
 type RegistrationResponse struct {
-	AccessToken *string `json:"accessToken,omitempty"`
-	Email       *string `json:"email,omitempty"`
-	Id          string  `json:"id,omitempty"`
+	AccessToken string `json:"accessToken,omitempty"`
+	Email       string `json:"email,omitempty"`
+	Id          string `json:"id,omitempty"`
 	Message     Message
 }

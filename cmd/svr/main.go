@@ -37,7 +37,7 @@ func main() {
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS", "DELETE", "PUT"},
 		AllowedHeaders:   []string{"Access-Control-Allow-Methods", "Access-Control-Allow-Origin", "X-Requested-With", "Authorization", "Content-Type", "X-Requested-With", "Bearer", "Origin"},
 		// Enable Debugging for testing, consider disabling in production
-		Debug: true,
+		Debug: false,
 	})
 
 	log.Fatal(services.ListenAndServe(Port, gziphandler.GzipHandler(c.Handler(router))))

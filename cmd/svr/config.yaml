@@ -7,13 +7,12 @@ ClientConfig:
   MaxIdleConsPerHost: 1
   MaxConsPerHost: 1
 DatabaseConfigs:
-  - Name: "MONGO"
-    Database: "phish-stats-db"
-    Server: "localhost"
-    Port: "27017"
-    Username: "rootuser"
-    Password: "rootpass"
-    Scheme: "mongo"
+  - Name: "PSTGQL"
+    Database: "Phsts_PSTGQL"
+    Server: "localhost:5432"
+    Username: "postgres"
+    Password: "password"
+    Scheme: "postgres"
 ServiceConfigs:
   - Name: "phishnet"
     URL: "https://api.phish.net/v5"

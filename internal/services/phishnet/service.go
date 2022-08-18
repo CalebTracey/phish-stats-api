@@ -11,6 +11,7 @@ import (
 	"os"
 )
 
+//go:generate mockgen -destination=mockService.go -package=phishnet . ServiceI
 type ServiceI interface {
 	GetShow(ctx context.Context, method string) (ShowResponse, error)
 }
@@ -47,6 +48,7 @@ func (s *Service) GetShow(ctx context.Context, date string) (ShowResponse, error
 	apiUrl := s.BaseUrl + "/setlists/showdate/" + date + s.Format + "?" + s.ApiKeyUri
 	logrus.Infoln(apiUrl)
 	req, _ := http.NewRequestWithContext(ctx, "GET", apiUrl, nil)
+	req.Header.Add("Accept", "application/json")
 
 	resp, err := s.Client.Do(req)
 

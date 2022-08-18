@@ -43,11 +43,11 @@ func VerifyPassword(userPassword string, providedPassword string) (bool, string)
 	return check, msg
 }
 
-func GenerateAllTokens(user models.User) (signedToken string, signedRefreshToken string, err error) {
+func GenerateAllTokens(user models.UserPsqlResponse) (signedToken string, signedRefreshToken string, err error) {
 	claims := &SignedDetails{
-		Email:    *user.Email,
-		FullName: *user.FullName,
-		Uid:      user.UserId,
+		Email:    user.Email,
+		FullName: user.FullName,
+		Uid:      user.ID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: &jwt.NumericDate{
 				Time: time.Now().Local().Add(time.Hour * time.Duration(24)),
