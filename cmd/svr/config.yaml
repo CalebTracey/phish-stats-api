@@ -1,0 +1,21 @@
+Env: "local"
+Port: "6080"
+AppName: "phish-stats-api"
+ClientConfig:
+  Timeout: 15
+  IdleConnTimeout: 30
+  MaxIdleConsPerHost: 1
+  MaxConsPerHost: 1
+DatabaseConfigs:
+  - Name: "MONGO"
+    Database: "phish-stats-db"
+    Server: "localhost"
+    Port: "27017"
+    Username: "rootuser"
+    Password: "rootpass"
+    Scheme: "mongo"
+ServiceConfigs:
+  - Name: "phishnet"
+    URL: "https://api.phish.net/v5"
+    ApiKeyEnvironmentVariable: "PHISH_STATS_API_KEY"
+    PublicKeyEnvironmentVariable: "PHISH_STATS_PUBLIC_KEY"
