@@ -2,7 +2,7 @@ package psql
 
 const (
 	AddUser = `insert into public.users (id, fullname, email, username, password, token, refreshtoken, created, updated)
-			values ('%s', '%s', '%s','%s', '%s', '%s', '%s', '%s', '%s');`
+			values ('%s', '%s', '%s','%s', '%s', '%s', '%s', '%s', '%s') returning id;`
 
 	FindUserByUsername = `select id, fullname, email, username, password, token, created, updated, refreshtoken
 			from public.users

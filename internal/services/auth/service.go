@@ -6,7 +6,6 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
-	"net/http"
 	"os"
 	"time"
 )
@@ -19,7 +18,6 @@ type ServiceI interface {
 	VerifyPassword(userPassword string, providedPassword string) (bool, string)
 	GenerateAllTokens(user models.User) (signedToken string, signedRefreshToken string, err error)
 	ValidateToken(signedToken string) (claims *SignedDetails, err error)
-	Middleware(http.Handler) http.Handler
 }
 
 type Service struct{}

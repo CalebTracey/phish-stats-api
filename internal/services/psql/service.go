@@ -69,18 +69,13 @@ func (s *Service) InsertNewUser(ctx context.Context, exec string) (*models.NewUs
 		return nil, []error{fmt.Errorf("error retrieving data; err: %v", err)}
 	}
 
-	lastInsertedId, idErr := result.LastInsertId()
-	if idErr != nil {
-		errs = append(errs, idErr)
-	}
 	rowsAffected, rowErr := result.RowsAffected()
 	if rowErr != nil {
 		errs = append(errs, rowErr)
 	}
 
 	return &models.NewUserResponse{
-		LastInsertedId: lastInsertedId,
-		RowsAffected:   rowsAffected,
+		RowsAffected: rowsAffected,
 	}, errs
 }
 

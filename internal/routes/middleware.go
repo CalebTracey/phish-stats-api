@@ -1,4 +1,4 @@
-package auth
+package routes
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (s Service) Middleware(http.Handler) http.Handler {
+func (h Handler) Middleware(http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
 		var response models.AuthResponse
@@ -27,7 +27,7 @@ func (s Service) Middleware(http.Handler) http.Handler {
 			return
 		}
 
-		claims, err := s.ValidateToken(clientToken)
+		claims, err := h.AuthService.ValidateToken(clientToken)
 		if err != nil {
 			response.Message.ErrorLog = errorLogs([]error{err}, "Validation error", http.StatusForbidden)
 			return
@@ -47,20 +47,20 @@ func setMiddlewareResponse(res models.AuthResponse) (models.AuthResponse, int) {
 	return res, status
 }
 
-func writeHeader(w http.ResponseWriter, code int) http.ResponseWriter {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	return w
-}
-
-func errorLogs(errors []error, rootCause string, status int) []models.ErrorLog {
-	var errLogs []models.ErrorLog
-	for _, err := range errors {
-		errLogs = append(errLogs, models.ErrorLog{
-			RootCause: rootCause,
-			Status:    strconv.Itoa(status),
-			Trace:     err.Error(),
-		})
-	}
-	return errLogs
-}
+//func writeHeader(w http.ResponseWriter, code int) http.ResponseWriter {
+//	w.Header().Set("Content-Type", "application/json")
+//	w.WriteHeader(code)
+//	return w
+//}
+//
+//func errorLogs(errors []error, rootCause string, status int) []models.ErrorLog {
+//	var errLogs []models.ErrorLog
+//	for _, err := range errors {
+//		errLogs = append(errLogs, models.ErrorLog{
+//			RootCause: rootCause,
+//			Status:    strconv.Itoa(status),
+//			Trace:     err.Error(),
+//		})
+//	}
+//	return errLogs
+//}

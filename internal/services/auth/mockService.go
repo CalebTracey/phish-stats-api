@@ -5,7 +5,6 @@
 package auth
 
 import (
-	http "net/http"
 	reflect "reflect"
 
 	models "github.com/calebtracey/phish-stats-api/internal/models"
@@ -63,20 +62,6 @@ func (m *MockServiceI) HashPassword(arg0 string) string {
 func (mr *MockServiceIMockRecorder) HashPassword(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HashPassword", reflect.TypeOf((*MockServiceI)(nil).HashPassword), arg0)
-}
-
-// Middleware mocks base method.
-func (m *MockServiceI) Middleware(arg0 http.Handler) http.Handler {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Middleware", arg0)
-	ret0, _ := ret[0].(http.Handler)
-	return ret0
-}
-
-// Middleware indicates an expected call of Middleware.
-func (mr *MockServiceIMockRecorder) Middleware(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Middleware", reflect.TypeOf((*MockServiceI)(nil).Middleware), arg0)
 }
 
 // ValidateToken mocks base method.

@@ -23,7 +23,8 @@ func (h Handler) InitializeRoutes() *mux.Router {
 	r := mux.NewRouter().StrictSlash(true)
 
 	secure := r.PathPrefix("/api").Subrouter()
-	secure.Use(h.AuthService.Middleware)
+	//middleware := h.AuthService.Middleware(r)
+	secure.Use(h.Middleware)
 
 	// Health check
 	r.Handle("/health", h.HealthCheck()).Methods(http.MethodGet)

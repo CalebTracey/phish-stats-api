@@ -197,3 +197,90 @@ func TestService_RegisterUser(t *testing.T) {
 		})
 	}
 }
+
+func TestService_GetShow(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	mockPsqlSvc := psql.NewMockServiceI(ctrl)
+	mockPhNetSvc := phishnet.NewMockServiceI(ctrl)
+	mockAuthSvc := auth.NewMockServiceI(ctrl)
+
+	type fields struct {
+		PsqlService     psql.ServiceI
+		PhishNetService phishnet.ServiceI
+		AuthService     auth.ServiceI
+		Validator       *validator.Validate
+	}
+
+	tests := []struct {
+		name         string
+		fields       fields
+		ctx          context.Context
+		req          models.GetShowRequest
+		want         models.GetShowResponse
+		mockResponse phishnet.ShowResponse
+		mockErr      error
+	}{
+		{
+			name: "Happy Path",
+			fields: fields{
+				PsqlService:     mockPsqlSvc,
+				PhishNetService: mockPhNetSvc,
+				AuthService:     mockAuthSvc,
+				Validator:       validator.New(),
+			},
+			ctx: context.Background(),
+			req: models.GetShowRequest{Date: "11/10/1991"},
+			want: models.GetShowResponse{
+				Show: models.Show{
+					Date: "11/10/1991",
+					Songs: []models.Song{
+						{
+							Title: "song 1",
+						},
+						{
+							Title: "song 2",
+						},
+						{
+							Title: "song 3",
+						},
+					},
+				},
+				Message: models.Message{},
+			},
+			mockResponse: phishnet.ShowResponse{
+				Error:        false,
+				ErrorMessage: "",
+				Data: []phishnet.Data{
+					{
+						Showdate: "11/10/1991",
+						Song:     "song 1",
+					},
+					{
+						Showdate: "11/10/1991",
+						Song:     "song 2",
+					},
+					{
+						Showdate: "11/10/1991",
+						Song:     "song 3",
+					},
+				},
+			},
+			mockErr: nil,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Service{
+				PsqlService:     tt.fields.PsqlService,
+				PhishNetService: tt.fields.PhishNetService,
+				AuthService:     tt.fields.AuthService,
+				Validator:       tt.fields.Validator,
+			}
+			mockPhNetSvc.EXPECT().GetShow(tt.ctx, tt.req.Date).Return(tt.mockResponse, tt.mockErr)
+			if got := s.GetShow(tt.ctx, tt.req); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("GetShow() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

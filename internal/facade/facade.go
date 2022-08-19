@@ -38,11 +38,9 @@ func NewService(appConfig *config.Config) (Service, error) {
 	psqlService := psql.InitializePsqlService(psqlConfig)
 	phishNetService, err := phishnet.InitializePhishNetService(appConfig)
 	validate := validator.New()
-
 	if err != nil {
 		return Service{}, err
 	}
-
 	return Service{
 		PsqlService:     psqlService,
 		PhishNetService: phishNetService,
@@ -70,19 +68,6 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 	updated := u.UpdatedAt.String()
 	pwHash := s.AuthService.HashPassword(u.Password)
 
-	exec := fmt.Sprintf(psql.AddUser, u.ID, u.FullName, u.Email, u.Username, pwHash, u.Token, u.RefreshToken, created, updated)
-
-	_, errs := s.PsqlService.InsertNewUser(ctx, exec)
-
-	if errs != nil && len(errs) > 0 {
-		for _, err := range errs {
-			log.Warnf("insert new user error: %v", err.Error())
-		}
-		//TODO probably remove these error logs and just have them log to warnings?
-		message.ErrorLog = errorLogs(errs, "New user error", http.StatusInternalServerError)
-		message.Status = strconv.Itoa(http.StatusInternalServerError)
-	}
-
 	// if user was inserted successfully, create auth tokens for response
 	token, refreshToken, err := s.updateUserTokens(ctx, userRequest, updated)
 	if err != nil {
@@ -91,6 +76,18 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 		response.User = &models.UserPsqlResponse{}
 		response.Message = message
 		return response
+	}
+
+	exec := fmt.Sprintf(psql.AddUser, u.ID, u.FullName, u.Email, u.Username, pwHash, token, refreshToken, created, updated)
+
+	_, errs := s.PsqlService.InsertNewUser(ctx, exec)
+	if errs != nil && len(errs) > 0 {
+		for _, err := range errs {
+			log.Warnf("insert new user error: %v", err.Error())
+		}
+		//TODO probably remove these error logs and just have them log to warnings?
+		message.ErrorLog = errorLogs(errs, "New user error", http.StatusInternalServerError)
+		message.Status = strconv.Itoa(http.StatusInternalServerError)
 	}
 
 	message.Status = strconv.Itoa(http.StatusOK)
@@ -102,7 +99,7 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 		Token:        token,
 	}
 	response.Message = message
-	log.Infof("User %v registered", response.User.Username)
+	log.Infof("New user %v registered", response.User.Username)
 
 	return response
 }
@@ -194,7 +191,6 @@ func (s *Service) GetShow(ctx context.Context, req models.GetShowRequest) models
 
 func (s Service) updateUserTokens(ctx context.Context, user models.User, updated string) (string, string, error) {
 	token, refreshToken, _ := s.AuthService.GenerateAllTokens(user)
-
 	exec := fmt.Sprintf(psql.UpdateTokens, token, refreshToken, updated, user.ID)
 	err := s.PsqlService.UpdateAllTokens(ctx, exec)
 	if err != nil {
