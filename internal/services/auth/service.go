@@ -6,11 +6,23 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
+	"net/http"
 	"os"
 	"time"
 )
 
 var SecretKey = os.Getenv("SECRET_KEY")
+
+//go:generate mockgen -destination=mockService.go -package=auth . ServiceI
+type ServiceI interface {
+	HashPassword(password string) string
+	VerifyPassword(userPassword string, providedPassword string) (bool, string)
+	GenerateAllTokens(user models.User) (signedToken string, signedRefreshToken string, err error)
+	ValidateToken(signedToken string) (claims *SignedDetails, err error)
+	Middleware(http.Handler) http.Handler
+}
+
+type Service struct{}
 
 type SignedDetails struct {
 	Email    string
@@ -20,7 +32,7 @@ type SignedDetails struct {
 }
 
 //HashPassword is used to encrypt the password before it is stored in the DB
-func HashPassword(password string) string {
+func (s Service) HashPassword(password string) string {
 	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
 	if err != nil {
 		log.Panic(err)
@@ -30,20 +42,20 @@ func HashPassword(password string) string {
 }
 
 //VerifyPassword checks the input password while verifying it with the passward in the DB.
-func VerifyPassword(userPassword string, providedPassword string) (bool, string) {
+func (s Service) VerifyPassword(userPassword string, providedPassword string) (bool, string) {
 	err := bcrypt.CompareHashAndPassword([]byte(providedPassword), []byte(userPassword))
 	check := true
 	msg := ""
 
 	if err != nil {
-		msg = fmt.Sprintf("login or passowrd is incorrect")
+		msg = fmt.Sprintf("login or password is incorrect")
 		check = false
 	}
 
 	return check, msg
 }
 
-func GenerateAllTokens(user models.UserPsqlResponse) (signedToken string, signedRefreshToken string, err error) {
+func (s Service) GenerateAllTokens(user models.User) (signedToken string, signedRefreshToken string, err error) {
 	claims := &SignedDetails{
 		Email:    user.Email,
 		FullName: user.FullName,
@@ -74,7 +86,7 @@ func GenerateAllTokens(user models.UserPsqlResponse) (signedToken string, signed
 	return token, refreshToken, err
 }
 
-func ValidateToken(signedToken string) (claims *SignedDetails, err error) {
+func (s Service) ValidateToken(signedToken string) (claims *SignedDetails, err error) {
 	token, err := jwt.ParseWithClaims(
 		signedToken,
 		&SignedDetails{},

@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func Middleware(http.Handler) http.Handler {
+func (s Service) Middleware(http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
 		var response models.AuthResponse
@@ -27,7 +27,7 @@ func Middleware(http.Handler) http.Handler {
 			return
 		}
 
-		claims, err := ValidateToken(clientToken)
+		claims, err := s.ValidateToken(clientToken)
 		if err != nil {
 			response.Message.ErrorLog = errorLogs([]error{err}, "Validation error", http.StatusForbidden)
 			return

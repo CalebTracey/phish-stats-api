@@ -26,6 +26,7 @@ type ServiceI interface {
 type Service struct {
 	PsqlService     psql.ServiceI
 	PhishNetService phishnet.ServiceI
+	AuthService     auth.ServiceI
 	Validator       *validator.Validate
 }
 
@@ -45,6 +46,7 @@ func NewService(appConfig *config.Config) (Service, error) {
 	return Service{
 		PsqlService:     psqlService,
 		PhishNetService: phishNetService,
+		AuthService:     auth.Service{},
 		Validator:       validate,
 	}, nil
 }
@@ -66,7 +68,7 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 	u := updateUserRequest(userRequest)
 	created := u.CreatedAt.String()
 	updated := u.UpdatedAt.String()
-	pwHash := auth.HashPassword(u.Password)
+	pwHash := s.AuthService.HashPassword(u.Password)
 
 	exec := fmt.Sprintf(psql.AddUser, u.ID, u.FullName, u.Email, u.Username, pwHash, u.Token, u.RefreshToken, created, updated)
 
@@ -81,25 +83,35 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 		message.Status = strconv.Itoa(http.StatusInternalServerError)
 	}
 
-	return models.UserResponse{
-		User: &models.UserPsqlResponse{
-			ID:           u.ID,
-			FullName:     u.FullName,
-			Email:        u.Email,
-			Username:     u.Username,
-			Password:     u.Password,
-			Token:        u.Token,
-			RefreshToken: u.RefreshToken,
-			CreatedAt:    created,
-			UpdatedAt:    updated,
-		},
-		Message: message,
+	// if user was inserted successfully, create auth tokens for response
+	token, refreshToken, err := s.updateUserTokens(ctx, userRequest, updated)
+	if err != nil {
+		message.ErrorLog = errorLogs([]error{err}, "Token update error", http.StatusInternalServerError)
+		message.Status = strconv.Itoa(http.StatusInternalServerError)
+		response.User = &models.UserPsqlResponse{}
+		response.Message = message
+		return response
 	}
+
+	message.Status = strconv.Itoa(http.StatusOK)
+	message.Count = 1
+	response.User = &models.UserPsqlResponse{
+		FullName:     u.FullName,
+		Username:     u.Username,
+		RefreshToken: refreshToken,
+		Token:        token,
+	}
+	response.Message = message
+	log.Infof("User %v registered", response.User.Username)
+
+	return response
 }
 
+// LoginUser uses auth service to verify user request and psql service to access user data
+// TODO test coverage for error cases
 func (s *Service) LoginUser(ctx context.Context, userRequest models.User) models.UserResponse {
-	var message models.Message
 	var response models.UserResponse
+	var message models.Message
 
 	foundUserExec := fmt.Sprintf(psql.FindUserByUsername, userRequest.Username)
 	foundUser, errs := s.PsqlService.FindUserByUsername(ctx, foundUserExec)
@@ -112,7 +124,7 @@ func (s *Service) LoginUser(ctx context.Context, userRequest models.User) models
 		return response
 	}
 
-	passwordIsValid, msg := auth.VerifyPassword(userRequest.Password, foundUser.Password)
+	passwordIsValid, msg := s.AuthService.VerifyPassword(userRequest.Password, foundUser.Password)
 
 	if passwordIsValid != true {
 		message.ErrorLog = errorLogs([]error{fmt.Errorf(msg)}, "Verification error", http.StatusInternalServerError)
@@ -121,12 +133,12 @@ func (s *Service) LoginUser(ctx context.Context, userRequest models.User) models
 		response.Message = message
 		return response
 	}
-	updated, _ := time.Parse(time.RFC3339, time.Now().Format(time.RFC3339))
 
-	token, refreshToken, _ := auth.GenerateAllTokens(*foundUser)
-	exec := fmt.Sprintf(psql.UpdateTokens, token, refreshToken, updated, foundUser.ID)
-	err := s.PsqlService.UpdateAllTokens(ctx, exec)
+	updated := time.Now().Format(time.RFC3339)
+	userRequest.Email = foundUser.Email
+	userRequest.ID = foundUser.ID
 
+	token, refreshToken, err := s.updateUserTokens(ctx, userRequest, updated)
 	if err != nil {
 		message.ErrorLog = errorLogs([]error{err}, "Token update error", http.StatusInternalServerError)
 		message.Status = strconv.Itoa(http.StatusInternalServerError)
@@ -134,11 +146,17 @@ func (s *Service) LoginUser(ctx context.Context, userRequest models.User) models
 		response.Message = message
 		return response
 	}
-	response.Message.Status = strconv.Itoa(http.StatusOK)
-	response.User = foundUser
-	response.User.RefreshToken = refreshToken
-	response.User.Token = token
-	response.User.UpdatedAt = updated.String()
+
+	message.Status = strconv.Itoa(http.StatusOK)
+	message.Count = 1
+	response.User = &models.UserPsqlResponse{
+		ID:           foundUser.ID,
+		FullName:     foundUser.FullName,
+		Username:     foundUser.Username,
+		RefreshToken: refreshToken,
+		Token:        token,
+	}
+	response.Message = message
 
 	log.Infof("User %v logged in", response.User.Username)
 	return response
@@ -172,6 +190,18 @@ func (s *Service) GetShow(ctx context.Context, req models.GetShowRequest) models
 	}
 
 	return response
+}
+
+func (s Service) updateUserTokens(ctx context.Context, user models.User, updated string) (string, string, error) {
+	token, refreshToken, _ := s.AuthService.GenerateAllTokens(user)
+
+	exec := fmt.Sprintf(psql.UpdateTokens, token, refreshToken, updated, user.ID)
+	err := s.PsqlService.UpdateAllTokens(ctx, exec)
+	if err != nil {
+		log.Errorf("failed to update tokens for user: %v", user.Username)
+		return "", "", err
+	}
+	return token, refreshToken, nil
 }
 
 func updateUserRequest(userRequest models.User) models.User {

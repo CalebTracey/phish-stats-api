@@ -15,14 +15,15 @@ import (
 )
 
 type Handler struct {
-	Service facade.ServiceI
+	Service     facade.ServiceI
+	AuthService auth.ServiceI
 }
 
 func (h Handler) InitializeRoutes() *mux.Router {
 	r := mux.NewRouter().StrictSlash(true)
 
 	secure := r.PathPrefix("/api").Subrouter()
-	secure.Use(auth.Middleware)
+	secure.Use(h.AuthService.Middleware)
 
 	// Health check
 	r.Handle("/health", h.HealthCheck()).Methods(http.MethodGet)

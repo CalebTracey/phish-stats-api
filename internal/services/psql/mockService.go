@@ -6,7 +6,6 @@ package psql
 
 import (
 	context "context"
-	sql "database/sql"
 	reflect "reflect"
 
 	models "github.com/calebtracey/phish-stats-api/internal/models"
@@ -52,10 +51,10 @@ func (mr *MockServiceIMockRecorder) FindUserByUsername(arg0, arg1 interface{}) *
 }
 
 // InsertNewUser mocks base method.
-func (m *MockServiceI) InsertNewUser(arg0 context.Context, arg1 string) (sql.Result, []error) {
+func (m *MockServiceI) InsertNewUser(arg0 context.Context, arg1 string) (*models.NewUserResponse, []error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "InsertNewUser", arg0, arg1)
-	ret0, _ := ret[0].(sql.Result)
+	ret0, _ := ret[0].(*models.NewUserResponse)
 	ret1, _ := ret[1].([]error)
 	return ret0, ret1
 }
