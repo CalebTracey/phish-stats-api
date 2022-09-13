@@ -66,9 +66,9 @@ func (mr *MockServiceIMockRecorder) InsertNewUser(arg0, arg1 interface{}) *gomoc
 }
 
 // UpdateAllTokens mocks base method.
-func (m *MockServiceI) UpdateAllTokens(arg0 context.Context, arg1 string) error {
+func (m *MockServiceI) InsertOne(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateAllTokens", arg0, arg1)
+	ret := m.ctrl.Call(m, "InsertOne", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -76,5 +76,5 @@ func (m *MockServiceI) UpdateAllTokens(arg0 context.Context, arg1 string) error 
 // UpdateAllTokens indicates an expected call of UpdateAllTokens.
 func (mr *MockServiceIMockRecorder) UpdateAllTokens(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateAllTokens", reflect.TypeOf((*MockServiceI)(nil).UpdateAllTokens), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InsertOne", reflect.TypeOf((*MockServiceI)(nil).InsertOne), arg0, arg1)
 }

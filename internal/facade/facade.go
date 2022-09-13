@@ -21,6 +21,7 @@ type ServiceI interface {
 	LoginUser(ctx context.Context, userRequest models.User) models.UserResponse
 	RegisterUser(ctx context.Context, userRequest models.User) models.UserResponse
 	GetShow(ctx context.Context, req models.GetShowRequest) models.GetShowResponse
+	AddUserShow(ctx context.Context, request models.AddUserShowRequest) []models.ErrorLog
 }
 
 type Service struct {
@@ -189,10 +190,24 @@ func (s *Service) GetShow(ctx context.Context, req models.GetShowRequest) models
 	return response
 }
 
+func (s Service) AddUserShow(ctx context.Context, request models.AddUserShowRequest) []models.ErrorLog {
+	var errLog []models.ErrorLog
+
+	exec := fmt.Sprintf(psql.AddUserShow, request.Id, request.Id, request.Date, request.Date)
+	err := s.PsqlService.InsertOne(ctx, exec)
+
+	if err != nil {
+		errLog = errorLogs([]error{err}, "Add User Show error", http.StatusInternalServerError)
+		return errLog
+	}
+
+	return nil
+}
+
 func (s Service) updateUserTokens(ctx context.Context, user models.User, updated string) (string, string, error) {
 	token, refreshToken, _ := s.AuthService.GenerateAllTokens(user)
 	exec := fmt.Sprintf(psql.UpdateTokens, token, refreshToken, updated, user.ID)
-	err := s.PsqlService.UpdateAllTokens(ctx, exec)
+	err := s.PsqlService.InsertOne(ctx, exec)
 	if err != nil {
 		log.Errorf("failed to update tokens for user: %v", user.Username)
 		return "", "", err

@@ -89,8 +89,7 @@ func TestService_InsertNewUser(t *testing.T) {
 			ctx:  context.Background(),
 			exec: fmt.Sprintf(AddUser, "13sdubf94", "Test Name", "test@email.com", "Test Username", "1208931bnd08128dn1", "1908wbhn190cb10cb1b0c", "19bc10cb10w8cb10w8cb", "11/10/2021", "11/10/2021"),
 			want: &models.NewUserResponse{
-				LastInsertedId: int64(1234325235),
-				RowsAffected:   int64(9),
+				RowsAffected: int64(9),
 			},
 			mockResErrs: nil,
 		},
@@ -149,8 +148,8 @@ func TestService_UpdateAllTokens(t *testing.T) {
 				db: tt.db,
 			}
 			mock.ExpectExec(regexp.QuoteMeta(tt.exec)).WillReturnResult(sqlmock.NewResult(tt.wantLastInsertedId, tt.wantRowsAffected))
-			if err := s.UpdateAllTokens(tt.ctx, tt.exec); (err != nil) != tt.wantErr {
-				t.Errorf("UpdateAllTokens() error = %v, wantErr %v", err, tt.wantErr)
+			if err := s.InsertOne(tt.ctx, tt.exec); (err != nil) != tt.wantErr {
+				t.Errorf("InsertOne() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

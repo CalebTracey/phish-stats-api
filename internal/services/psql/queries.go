@@ -4,6 +4,17 @@ const (
 	AddUser = `insert into public.users (id, fullname, email, username, password, token, refreshtoken, created, updated)
 			values ('%s', '%s', '%s','%s', '%s', '%s', '%s', '%s', '%s') returning id;`
 
+	AddUserShow = `with data as (
+					select shows from public.users
+					where id = '%s'
+				)
+				
+				insert into public.users (shows)
+				select * from data
+				where not exists (
+					select * from public.users
+					where id = '%s' and '%s' in (select '%s' from data));`
+
 	FindUserByUsername = `select id, fullname, email, username, password, token, created, updated, refreshtoken
 			from public.users
 			where username = '%s';`

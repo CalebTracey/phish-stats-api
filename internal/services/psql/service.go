@@ -13,7 +13,7 @@ import (
 type ServiceI interface {
 	FindUserByUsername(ctx context.Context, query string) (*models.UserPsqlResponse, []error)
 	InsertNewUser(ctx context.Context, exec string) (*models.NewUserResponse, []error)
-	UpdateAllTokens(ctx context.Context, exec string) error
+	InsertOne(ctx context.Context, exec string) error
 }
 
 type Service struct {
@@ -79,7 +79,7 @@ func (s *Service) InsertNewUser(ctx context.Context, exec string) (*models.NewUs
 	}, errs
 }
 
-func (s *Service) UpdateAllTokens(ctx context.Context, exec string) error {
+func (s *Service) InsertOne(ctx context.Context, exec string) error {
 	_, err := s.db.ExecContext(ctx, exec)
 	if err != nil {
 		return err

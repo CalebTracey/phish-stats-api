@@ -32,6 +32,7 @@ func (h Handler) InitializeRoutes() *mux.Router {
 	// User
 	r.Handle("/auth/register", h.RegistrationHandler()).Methods(http.MethodPost)
 	r.Handle("/auth/login", h.LoginHandler()).Methods(http.MethodPost)
+	r.Handle("/user/shows/add", h.AddUserShowHandler()).Methods(http.MethodPut)
 
 	r.Handle("/show", h.GetShowHandler()).Methods(http.MethodGet)
 
@@ -119,6 +120,34 @@ func (h Handler) GetShowHandler() http.HandlerFunc {
 		}
 
 		response = h.Service.GetShow(r.Context(), request)
+	}
+}
+
+func (h Handler) AddUserShowHandler() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		startTime := time.Now()
+		var response models.UserResponse
+
+		defer func() {
+			status, _ := strconv.Atoi(response.Message.Status)
+			response.Message.TimeTaken = time.Since(startTime).String()
+			_ = json.NewEncoder(writeHeader(w, status)).Encode(response)
+		}()
+
+		var request models.AddUserShowRequest
+		id := r.URL.Query().Get("id")
+		date := r.URL.Query().Get("date")
+
+		request.Id = id
+		request.Date = date
+
+		errLogs := h.Service.AddUserShow(r.Context(), request)
+		if len(errLogs) > 0 {
+			response.Message.ErrorLog = errLogs
+			response.Message.Status = errLogs[0].Status
+			response.Message.Count = 0
+			return
+		}
 	}
 }
 
