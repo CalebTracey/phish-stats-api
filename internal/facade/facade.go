@@ -21,7 +21,8 @@ type ServiceI interface {
 	LoginUser(ctx context.Context, userRequest models.User) models.UserResponse
 	RegisterUser(ctx context.Context, userRequest models.User) models.UserResponse
 	GetShow(ctx context.Context, req models.GetShowRequest) models.GetShowResponse
-	AddUserShow(ctx context.Context, request models.AddUserShowRequest) []models.ErrorLog
+	GetUser(ctx context.Context, id string) models.UserResponse
+	AddUserShow(ctx context.Context, request models.AddUserShowRequest) models.AddShowResponse
 }
 
 type Service struct {
@@ -60,7 +61,7 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 		message.ErrorLog = errorLogs([]error{validationErr}, "Validation error", http.StatusBadRequest)
 		message.Status = strconv.Itoa(http.StatusBadRequest)
 		response.Message = message
-		response.User = &models.UserPsqlResponse{}
+		response.User = &models.UserParsedResponse{}
 		return response
 	}
 
@@ -74,12 +75,12 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 	if err != nil {
 		message.ErrorLog = errorLogs([]error{err}, "Token update error", http.StatusInternalServerError)
 		message.Status = strconv.Itoa(http.StatusInternalServerError)
-		response.User = &models.UserPsqlResponse{}
+		response.User = &models.UserParsedResponse{}
 		response.Message = message
 		return response
 	}
-
-	exec := fmt.Sprintf(psql.AddUser, u.ID, u.FullName, u.Email, u.Username, pwHash, token, refreshToken, created, updated)
+	var shows []string
+	exec := fmt.Sprintf(psql.AddUser, u.ID, u.FullName, u.Email, u.Username, pwHash, token, refreshToken, created, updated, shows)
 
 	_, errs := s.PsqlService.InsertNewUser(ctx, exec)
 	if errs != nil && len(errs) > 0 {
@@ -93,7 +94,7 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 
 	message.Status = strconv.Itoa(http.StatusOK)
 	message.Count = 1
-	response.User = &models.UserPsqlResponse{
+	response.User = &models.UserParsedResponse{
 		FullName:     u.FullName,
 		Username:     u.Username,
 		RefreshToken: refreshToken,
@@ -111,13 +112,13 @@ func (s *Service) LoginUser(ctx context.Context, userRequest models.User) models
 	var response models.UserResponse
 	var message models.Message
 
-	foundUserExec := fmt.Sprintf(psql.FindUserByUsername, userRequest.Username)
-	foundUser, errs := s.PsqlService.FindUserByUsername(ctx, foundUserExec)
+	foundUserExec := fmt.Sprintf(psql.FindUserByEmail, userRequest.Email)
+	foundUser, errs := s.PsqlService.FindUser(ctx, foundUserExec)
 
 	if errs != nil && len(errs) > 0 {
 		message.ErrorLog = errorLogs(errs, "User not found", http.StatusNotFound)
 		message.Status = strconv.Itoa(http.StatusNotFound)
-		response.User = &models.UserPsqlResponse{}
+		response.User = &models.UserParsedResponse{}
 		response.Message = message
 		return response
 	}
@@ -125,9 +126,9 @@ func (s *Service) LoginUser(ctx context.Context, userRequest models.User) models
 	passwordIsValid, msg := s.AuthService.VerifyPassword(userRequest.Password, foundUser.Password)
 
 	if passwordIsValid != true {
-		message.ErrorLog = errorLogs([]error{fmt.Errorf(msg)}, "Verification error", http.StatusInternalServerError)
+		message.ErrorLog = errorLogs([]error{fmt.Errorf(msg)}, fmt.Sprintf("Verification error %v", userRequest.Email), http.StatusInternalServerError)
 		message.Status = strconv.Itoa(http.StatusInternalServerError)
-		response.User = &models.UserPsqlResponse{}
+		response.User = &models.UserParsedResponse{}
 		response.Message = message
 		return response
 	}
@@ -140,23 +141,39 @@ func (s *Service) LoginUser(ctx context.Context, userRequest models.User) models
 	if err != nil {
 		message.ErrorLog = errorLogs([]error{err}, "Token update error", http.StatusInternalServerError)
 		message.Status = strconv.Itoa(http.StatusInternalServerError)
-		response.User = &models.UserPsqlResponse{}
+		response.User = &models.UserParsedResponse{}
 		response.Message = message
 		return response
 	}
 
 	message.Status = strconv.Itoa(http.StatusOK)
 	message.Count = 1
-	response.User = &models.UserPsqlResponse{
-		ID:           foundUser.ID,
-		FullName:     foundUser.FullName,
-		Username:     foundUser.Username,
-		RefreshToken: refreshToken,
-		Token:        token,
-	}
 	response.Message = message
-
+	foundUser.Token = token
+	foundUser.RefreshToken = refreshToken
+	response.User = foundUser
 	log.Infof("User %v logged in", response.User.Username)
+	return response
+}
+
+func (s *Service) GetUser(ctx context.Context, id string) models.UserResponse {
+	var response models.UserResponse
+	var message models.Message
+
+	foundUserExec := fmt.Sprintf(psql.FindUserById, id)
+	foundUser, errs := s.PsqlService.FindUser(ctx, foundUserExec)
+	if errs != nil && len(errs) > 0 {
+		message.ErrorLog = errorLogs(errs, "User not found", http.StatusNotFound)
+		message.Status = strconv.Itoa(http.StatusNotFound)
+		response.User = &models.UserParsedResponse{}
+		response.Message = message
+		return response
+	}
+
+	message.Status = strconv.Itoa(http.StatusOK)
+	message.Count = 1
+	response.Message = message
+	response.User = foundUser
 	return response
 }
 
@@ -187,21 +204,33 @@ func (s *Service) GetShow(ctx context.Context, req models.GetShowRequest) models
 		Songs: songs,
 	}
 
+	message.Status = strconv.Itoa(http.StatusOK)
+	message.Count = 1
 	return response
 }
 
-func (s Service) AddUserShow(ctx context.Context, request models.AddUserShowRequest) []models.ErrorLog {
-	var errLog []models.ErrorLog
+func (s *Service) AddUserShow(ctx context.Context, request models.AddUserShowRequest) models.AddShowResponse {
+	var response models.AddShowResponse
+	var message models.Message
+	var exec string
+	var shows []string
+	shows = append(shows, request.Date)
+	//u := s.GetUser(ctx, request.Id)
+	//TODO fix duplicates
+	exec = fmt.Sprintf(psql.AddUserShow, shows, request.Id)
 
-	exec := fmt.Sprintf(psql.AddUserShow, request.Id, request.Id, request.Date, request.Date)
 	err := s.PsqlService.InsertOne(ctx, exec)
-
 	if err != nil {
-		errLog = errorLogs([]error{err}, "Add User Show error", http.StatusInternalServerError)
-		return errLog
+		message.ErrorLog = errorLogs([]error{err}, "Add User Show error", http.StatusInternalServerError)
+		message.Status = strconv.Itoa(http.StatusInternalServerError)
+		response.Message = message
+		return response
 	}
 
-	return nil
+	response.Date = request.Date
+	message.Status = strconv.Itoa(http.StatusOK)
+	message.Count = 1
+	return response
 }
 
 func (s Service) updateUserTokens(ctx context.Context, user models.User, updated string) (string, string, error) {
@@ -226,6 +255,7 @@ func updateUserRequest(userRequest models.User) models.User {
 func errorLogs(errors []error, rootCause string, status int) []models.ErrorLog {
 	var errLogs []models.ErrorLog
 	for _, err := range errors {
+		log.Errorf("%v: %v", rootCause, err.Error())
 		errLogs = append(errLogs, models.ErrorLog{
 			RootCause: rootCause,
 			Status:    strconv.Itoa(status),

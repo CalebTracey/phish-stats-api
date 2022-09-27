@@ -13,7 +13,7 @@ type GetShowResponse struct {
 }
 
 type UserResponse struct {
-	User    *UserPsqlResponse
+	User    *UserParsedResponse
 	Message Message
 }
 
@@ -22,32 +22,17 @@ type AllUsersResponse struct {
 	Message Message
 }
 
-type LoginResponse struct {
-	Username     string  `bson:"username,omitempty"  json:"username,omitempty"`
-	Email        string  `bson:"email,omitempty"  json:"email,omitempty"`
-	Token        string  `bson:"token,omitempty"  json:"token,omitempty"`
-	RefreshToken string  `bson:"refreshToken,omitempty"  json:"refreshToken,omitempty"`
-	UserId       string  `bson:"userId,omitempty"  json:"userId,omitempty"`
-	Message      Message `json:"message,omitempty"`
-}
-
-type RegistrationResponse struct {
-	AccessToken string `json:"accessToken,omitempty"`
-	Email       string `json:"email,omitempty"`
-	Id          string `json:"id,omitempty"`
-	Message     Message
-}
-
-type UserPsqlResponse struct {
-	ID           string `bson:"id,omitempty" json:"id,omitempty"`
-	FullName     string `bson:"fullName,omitempty" json:"fullName,omitempty"`
-	Email        string `bson:"email,omitempty"  json:"email,omitempty"`
-	Username     string `bson:"username,omitempty"  json:"username,omitempty"`
-	Password     string `bson:"password,omitempty"  json:"password,omitempty"`
-	Token        string `bson:"token,omitempty"  json:"token,omitempty"`
-	RefreshToken string `bson:"refreshToken,omitempty"  json:"refreshToken,omitempty"`
-	CreatedAt    string `bson:"createdAt"  json:"createdAt,omitempty"`
-	UpdatedAt    string `bson:"updatedAt"  json:"updatedAt,omitempty"`
+type UserParsedResponse struct {
+	ID           string   `bson:"id,omitempty" json:"id,omitempty"`
+	FullName     string   `bson:"fullName,omitempty" json:"fullName,omitempty"`
+	Email        string   `bson:"email,omitempty"  json:"email,omitempty"`
+	Username     string   `bson:"username,omitempty"  json:"username,omitempty"`
+	Password     string   `bson:"password,omitempty"  json:"password,omitempty"`
+	Token        string   `bson:"token,omitempty"  json:"token,omitempty"`
+	RefreshToken string   `bson:"refreshToken,omitempty"  json:"refreshToken,omitempty"`
+	CreatedAt    string   `bson:"createdAt"  json:"createdAt,omitempty"`
+	UpdatedAt    string   `bson:"updatedAt"  json:"updatedAt,omitempty"`
+	Shows        []string `bson:"shows" json:"shows,omitempty"`
 }
 
 type NewUserResponse struct {
@@ -55,12 +40,9 @@ type NewUserResponse struct {
 	RowsAffected   int64
 }
 
-type LoginUser struct {
-	Username     string `bson:"username,omitempty"  json:"username,omitempty"`
-	Email        string `bson:"email,omitempty"  json:"email,omitempty"`
-	Token        string `bson:"token,omitempty"  json:"token,omitempty"`
-	RefreshToken string `bson:"refreshToken,omitempty"  json:"refreshToken,omitempty"`
-	UserId       string `bson:"userId,omitempty"  json:"userId,omitempty"`
+type AddShowResponse struct {
+	Date    string  `json:"date,omitempty"`
+	Message Message `json:"message,omitempty"`
 }
 
 type Message struct {

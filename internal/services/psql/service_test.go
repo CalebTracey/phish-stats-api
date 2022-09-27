@@ -19,7 +19,7 @@ func TestService_FindUserByUsername(t *testing.T) {
 		db          *sql.DB
 		ctx         context.Context
 		query       string
-		want        *models.UserPsqlResponse
+		want        *models.UserParsedResponse
 		mockResRows []string
 		mockResErrs []error
 	}{
@@ -27,8 +27,8 @@ func TestService_FindUserByUsername(t *testing.T) {
 			name:  "Happy Path",
 			db:    db,
 			ctx:   context.Background(),
-			query: fmt.Sprintf(FindUserByUsername, "TestUsername"),
-			want: &models.UserPsqlResponse{
+			query: fmt.Sprintf(FindUserByEmail, "TestUsername"),
+			want: &models.UserParsedResponse{
 				ID:           "542113",
 				FullName:     "Test User",
 				Email:        "test@email.com",
@@ -61,12 +61,12 @@ func TestService_FindUserByUsername(t *testing.T) {
 			if tt.want != nil {
 				mock.ExpectQuery(regexp.QuoteMeta(tt.query)).WillReturnRows(sqlmock.NewRows([]string{"id", "fullname", "email", "username", "password", "token", "created", "updated", "refreshtoken"}).AddRow(tt.want.ID, tt.want.FullName, tt.want.Email, tt.want.Username, tt.want.Password, tt.want.Token, tt.want.CreatedAt, tt.want.UpdatedAt, tt.want.RefreshToken))
 			}
-			got, got1 := s.FindUserByUsername(tt.ctx, tt.query)
+			got, got1 := s.FindUser(tt.ctx, tt.query)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FindUserByUsername() got = %v, want %v", got, tt.want)
+				t.Errorf("FindUser() got = %v, want %v", got, tt.want)
 			}
 			if !reflect.DeepEqual(got1, tt.mockResErrs) {
-				t.Errorf("FindUserByUsername() got1 = %v, want %v", got1, tt.mockResErrs)
+				t.Errorf("FindUser() got1 = %v, want %v", got1, tt.mockResErrs)
 			}
 		})
 	}
@@ -87,9 +87,9 @@ func TestService_InsertNewUser(t *testing.T) {
 			name: "Happy Path",
 			db:   db,
 			ctx:  context.Background(),
-			exec: fmt.Sprintf(AddUser, "13sdubf94", "Test Name", "test@email.com", "Test Username", "1208931bnd08128dn1", "1908wbhn190cb10cb1b0c", "19bc10cb10w8cb10w8cb", "11/10/2021", "11/10/2021"),
+			exec: fmt.Sprintf(AddUser, "13sdubf94", "Test Name", "test@email.com", "Test Username", "1208931bnd08128dn1", "1908wbhn190cb10cb1b0c", "19bc10cb10w8cb10w8cb", "11/10/2021", "11/10/2021", []string{}),
 			want: &models.NewUserResponse{
-				RowsAffected: int64(9),
+				RowsAffected: int64(10),
 			},
 			mockResErrs: nil,
 		},

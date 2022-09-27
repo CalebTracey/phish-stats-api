@@ -6,12 +6,13 @@ import (
 	"fmt"
 	config "github.com/calebtracey/config-yaml"
 	"github.com/calebtracey/phish-stats-api/internal/models"
+	"github.com/lib/pq"
 	log "github.com/sirupsen/logrus"
 )
 
 //go:generate mockgen -destination=mockService.go -package=psql . ServiceI
 type ServiceI interface {
-	FindUserByUsername(ctx context.Context, query string) (*models.UserPsqlResponse, []error)
+	FindUser(ctx context.Context, query string) (*models.UserParsedResponse, []error)
 	InsertNewUser(ctx context.Context, exec string) (*models.NewUserResponse, []error)
 	InsertOne(ctx context.Context, exec string) error
 }
@@ -24,8 +25,8 @@ func InitializePsqlService(psqlConfig *config.DatabaseConfig) *Service {
 	return &Service{db: psqlConfig.DB}
 }
 
-func (s *Service) FindUserByUsername(ctx context.Context, query string) (*models.UserPsqlResponse, []error) {
-	var usr models.UserPsqlResponse
+func (s Service) FindUser(ctx context.Context, query string) (*models.UserParsedResponse, []error) {
+	var user models.UserParsedResponse
 	errs := s.validateDbAction(query)
 
 	if errs != nil || len(errs) > 0 {
@@ -38,25 +39,26 @@ func (s *Service) FindUserByUsername(ctx context.Context, query string) (*models
 	}
 	for rows.Next() {
 		err := rows.Scan(
-			&usr.ID,
-			&usr.FullName,
-			&usr.Email,
-			&usr.Username,
-			&usr.Password,
-			&usr.Token,
-			&usr.CreatedAt,
-			&usr.UpdatedAt,
-			&usr.RefreshToken,
+			&user.ID,
+			&user.FullName,
+			&user.Email,
+			&user.Username,
+			&user.Password,
+			&user.Token,
+			&user.RefreshToken,
+			&user.CreatedAt,
+			&user.UpdatedAt,
+			pq.Array(&user.Shows),
 		)
 		if err != nil {
 			log.Panicln(err)
 		}
 	}
 
-	return &usr, nil
+	return &user, nil
 }
 
-func (s *Service) InsertNewUser(ctx context.Context, exec string) (*models.NewUserResponse, []error) {
+func (s Service) InsertNewUser(ctx context.Context, exec string) (*models.NewUserResponse, []error) {
 	var errs []error
 	vErrs := s.validateDbAction(exec)
 
@@ -79,7 +81,7 @@ func (s *Service) InsertNewUser(ctx context.Context, exec string) (*models.NewUs
 	}, errs
 }
 
-func (s *Service) InsertOne(ctx context.Context, exec string) error {
+func (s Service) InsertOne(ctx context.Context, exec string) error {
 	_, err := s.db.ExecContext(ctx, exec)
 	if err != nil {
 		return err
@@ -88,7 +90,7 @@ func (s *Service) InsertOne(ctx context.Context, exec string) error {
 	return nil
 }
 
-func (s *Service) validateDbAction(query string) []error {
+func (s Service) validateDbAction(query string) []error {
 	var errs []error
 	if s.db == nil {
 		errs = append(errs, fmt.Errorf("no database connection"))

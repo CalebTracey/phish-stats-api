@@ -17,6 +17,10 @@ type User struct {
 	Shows        []string  `json:"shows"`
 }
 
+type ShowDate struct {
+	Date uint8
+}
+
 type Show struct {
 	Date  string
 	Venue string

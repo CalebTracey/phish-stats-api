@@ -32,6 +32,8 @@ func (h Handler) InitializeRoutes() *mux.Router {
 	// User
 	r.Handle("/auth/register", h.RegistrationHandler()).Methods(http.MethodPost)
 	r.Handle("/auth/login", h.LoginHandler()).Methods(http.MethodPost)
+
+	r.Handle("/user/{id}", h.GetUserData()).Methods(http.MethodGet)
 	r.Handle("/user/shows/add", h.AddUserShowHandler()).Methods(http.MethodPut)
 
 	r.Handle("/show", h.GetShowHandler()).Methods(http.MethodGet)
@@ -126,28 +128,47 @@ func (h Handler) GetShowHandler() http.HandlerFunc {
 func (h Handler) AddUserShowHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
-		var response models.UserResponse
+		var response models.AddShowResponse
+		var request models.AddUserShowRequest
 
 		defer func() {
 			status, _ := strconv.Atoi(response.Message.Status)
+			hn, _ := os.Hostname()
+			response.Message.HostName = hn
 			response.Message.TimeTaken = time.Since(startTime).String()
 			_ = json.NewEncoder(writeHeader(w, status)).Encode(response)
 		}()
 
-		var request models.AddUserShowRequest
-		id := r.URL.Query().Get("id")
-		date := r.URL.Query().Get("date")
+		requestBody, readErr := ioutil.ReadAll(r.Body)
 
-		request.Id = id
-		request.Date = date
-
-		errLogs := h.Service.AddUserShow(r.Context(), request)
-		if len(errLogs) > 0 {
-			response.Message.ErrorLog = errLogs
-			response.Message.Status = errLogs[0].Status
-			response.Message.Count = 0
+		if readErr != nil {
+			response.Message.ErrorLog = errorLogs([]error{readErr}, "Unable to read request body", http.StatusBadRequest)
 			return
 		}
+		err := json.Unmarshal(requestBody, &request)
+		if err != nil {
+			response.Message.ErrorLog = errorLogs([]error{err}, "Unable to parse request", http.StatusBadRequest)
+			return
+		}
+
+		response = h.Service.AddUserShow(r.Context(), request)
+	}
+}
+
+func (h Handler) GetUserData() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		startTime := time.Now()
+		var response models.UserResponse
+
+		defer func() {
+			response.Message.TimeTaken = time.Since(startTime).String()
+			response, status := setUserResponse(response)
+			_ = json.NewEncoder(writeHeader(w, status)).Encode(response)
+		}()
+
+		params := mux.Vars(r)
+		id := params["id"]
+		response = h.Service.GetUser(r.Context(), id)
 	}
 }
 
@@ -161,14 +182,19 @@ func (h Handler) HealthCheck() http.HandlerFunc {
 	}
 }
 
-func setUserResponse(res models.UserResponse) (models.LoginResponse, int) {
+func setUserResponse(res models.UserResponse) (models.UserResponse, int) {
 	status, _ := strconv.Atoi(res.Message.Status)
 	hn, _ := os.Hostname()
-	return models.LoginResponse{
-		Username:     res.User.Username,
-		Email:        res.User.Email,
-		Token:        res.User.Token,
-		RefreshToken: res.User.RefreshToken,
+	return models.UserResponse{
+		User: &models.UserParsedResponse{
+			ID:           res.User.ID,
+			FullName:     res.User.FullName,
+			Username:     res.User.Username,
+			Email:        res.User.Email,
+			Shows:        res.User.Shows,
+			Token:        res.User.Token,
+			RefreshToken: res.User.RefreshToken,
+		},
 		Message: models.Message{
 			ErrorLog: res.Message.ErrorLog,
 			HostName: hn,

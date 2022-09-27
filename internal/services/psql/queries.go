@@ -1,29 +1,28 @@
 package psql
 
 const (
-	AddUser = `insert into public.users (id, fullname, email, username, password, token, refreshtoken, created, updated)
-			values ('%s', '%s', '%s','%s', '%s', '%s', '%s', '%s', '%s') returning id;`
+	AddUser = `insert into public.users (id, fullname, email, username, password, token, refreshtoken, created, updated, shows)
+			values ('%s', '%s', '%s','%s', '%s', '%s', '%s', '%s', '%s', '{%s}') returning id;`
 
-	AddUserShow = `with data as (
-					select shows from public.users
-					where id = '%s'
-				)
-				
-				insert into public.users (shows)
-				select * from data
-				where not exists (
-					select * from public.users
-					where id = '%s' and '%s' in (select '%s' from data));`
-
-	FindUserByUsername = `select id, fullname, email, username, password, token, created, updated, refreshtoken
+	FindUserByEmail = `select id, fullname, email, username, password, token, refreshtoken, created, updated, shows
 			from public.users
-			where username = '%s';`
+			where email = '%s';`
 
-	FindUserById = `select id, fullname, email, username, password, token, created, updated, refreshtoken
+	FindUserById = `select id, fullname, email, username, password, token, refreshtoken, created, updated, shows
 			from public.users
 			where id = '%s';`
 
 	UpdateTokens = `update public.users
 			set token = '%s', refreshtoken = '%s', updated = '%s'
 			where id = '%s';`
+
+	SetUserShows = `update public.users set shows='{%s}'
+			where id = '%s';`
+
+	AddUserShow = `update public.users 
+			set shows = array_append(shows, '%s')
+			where id = '%s';`
+	//AddUserShow = `select array(select distinct unnest(shows || '{%s}'))
+	//		from public.users
+	//		where id = '%s';`
 )

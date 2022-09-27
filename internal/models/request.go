@@ -5,6 +5,7 @@ type GetShowRequest struct {
 }
 
 type AddUserShowRequest struct {
-	Id   string `json:"id,omitempty"`
-	Date string `json:"date,omitempty"`
+	Id       string `json:"id,omitempty"`
+	Username string `json:"username,omitempty"`
+	Date     string `json:"date,omitempty"`
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/calebtracey/phish-stats-api/internal/services/auth"
 	"github.com/calebtracey/phish-stats-api/internal/services/phishnet"
 	"github.com/calebtracey/phish-stats-api/internal/services/psql"
+	"github.com/go-playground/assert/v2"
 	"github.com/go-playground/validator/v10"
 	"github.com/golang/mock/gomock"
 	"net/http"
@@ -45,7 +46,7 @@ func TestService_LoginUser(t *testing.T) {
 		wantVerifyMsg string
 		wantGenErr    error
 		wantUpdateErr error
-		mockResponse  *models.UserPsqlResponse
+		mockResponse  *models.UserParsedResponse
 		mockErrs      []error
 	}{
 		{
@@ -58,18 +59,20 @@ func TestService_LoginUser(t *testing.T) {
 			},
 			ctx: context.Background(),
 			userRequest: models.User{
-				Username: "testusername123",
+				Email:    "testusername123@email.com",
 				Password: "password123",
 			},
-			query: fmt.Sprintf(psql.FindUserByUsername, "testusername123"),
+			query: fmt.Sprintf(psql.FindUserByEmail, "testusername123@email.com"),
 			exec:  fmt.Sprintf(psql.UpdateTokens, "39048567301249586", "01938467501934651", updated, "542113"),
 			want: models.UserResponse{
-				User: &models.UserPsqlResponse{
+				User: &models.UserParsedResponse{
 					ID:           "542113",
 					FullName:     "Test User",
 					Username:     "testusername123",
+					Email:        "testusername123@email.com",
 					Token:        "39048567301249586",
 					RefreshToken: "01938467501934651",
+					Shows:        []string{},
 				},
 				Message: models.Message{
 					ErrorLog: nil,
@@ -81,10 +84,10 @@ func TestService_LoginUser(t *testing.T) {
 			wantVerifyMsg: "",
 			wantGenErr:    nil,
 			wantUpdateErr: nil,
-			mockResponse: &models.UserPsqlResponse{
+			mockResponse: &models.UserParsedResponse{
 				ID:           "542113",
 				FullName:     "Test User",
-				Email:        "test@email.com",
+				Email:        "testusername123@email.com",
 				Username:     "testusername123",
 				Password:     "password123",
 				Token:        "39048567301249586",
@@ -103,13 +106,16 @@ func TestService_LoginUser(t *testing.T) {
 				AuthService:     tt.fields.AuthService,
 				Validator:       tt.fields.Validator,
 			}
-			mockPsqlSvc.EXPECT().FindUserByUsername(tt.ctx, tt.query).Return(tt.mockResponse, tt.mockErrs)
+			mockPsqlSvc.EXPECT().FindUser(tt.ctx, tt.query).Return(tt.mockResponse, tt.mockErrs)
 			mockAuthSvc.EXPECT().VerifyPassword(gomock.Any(), gomock.Any()).Return(tt.wantVerify, tt.wantVerifyMsg)
 			mockAuthSvc.EXPECT().GenerateAllTokens(gomock.Any()).Return("39048567301249586", "01938467501934651", tt.wantGenErr)
-			mockPsqlSvc.EXPECT().UpdateAllTokens(tt.ctx, gomock.Any()).Return(tt.wantUpdateErr)
-			if got := s.LoginUser(tt.ctx, tt.userRequest); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("LoginUser() = %v, want %v", got, tt.want)
-			}
+			mockPsqlSvc.EXPECT().InsertOne(tt.ctx, gomock.Any()).Return(tt.wantUpdateErr)
+			got := s.LoginUser(tt.ctx, tt.userRequest)
+			assert.Equal(t, got.User, tt.want.User)
+			assert.Equal(t, got.Message.Status, tt.want.Message.Status)
+			//if  !reflect.DeepEqual(got, tt.want) {
+			//	t.Errorf("LoginUser() = %v, want %v", got, tt.want)
+			//}
 		})
 	}
 }
@@ -159,7 +165,7 @@ func TestService_RegisterUser(t *testing.T) {
 			wantUpdateErr: nil,
 			wantGenErr:    nil,
 			want: models.UserResponse{
-				User: &models.UserPsqlResponse{
+				User: &models.UserParsedResponse{
 					FullName:     "Test User",
 					Username:     "testusername123",
 					Token:        "39048567301249586",
@@ -189,7 +195,7 @@ func TestService_RegisterUser(t *testing.T) {
 			mockPsqlSvc.EXPECT().InsertNewUser(tt.ctx, gomock.Any()).Return(tt.mockRes, tt.execErrs)
 			mockAuthSvc.EXPECT().HashPassword(tt.userRequest.Password).Return(tt.mockHash)
 			mockAuthSvc.EXPECT().GenerateAllTokens(gomock.Any()).Return("39048567301249586", "01938467501934651", tt.wantGenErr)
-			mockPsqlSvc.EXPECT().UpdateAllTokens(tt.ctx, gomock.Any()).Return(tt.wantUpdateErr)
+			mockPsqlSvc.EXPECT().InsertOne(tt.ctx, gomock.Any()).Return(tt.wantUpdateErr)
 
 			if got := s.RegisterUser(tt.ctx, tt.userRequest); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("RegisterUser() = %v, want %v", got, tt.want)
