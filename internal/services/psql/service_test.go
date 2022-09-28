@@ -6,71 +6,12 @@ import (
 	"fmt"
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/calebtracey/phish-stats-api/internal/models"
+	"github.com/lib/pq"
 	"reflect"
 	"regexp"
 	"testing"
 	"time"
 )
-
-func TestService_FindUserByUsername(t *testing.T) {
-	db, mock, _ := sqlmock.New()
-	tests := []struct {
-		name        string
-		db          *sql.DB
-		ctx         context.Context
-		query       string
-		want        *models.UserParsedResponse
-		mockResRows []string
-		mockResErrs []error
-	}{
-		{
-			name:  "Happy Path",
-			db:    db,
-			ctx:   context.Background(),
-			query: fmt.Sprintf(FindUserByEmail, "TestUsername"),
-			want: &models.UserParsedResponse{
-				ID:           "542113",
-				FullName:     "Test User",
-				Email:        "test@email.com",
-				Username:     "testusername123",
-				Password:     "password123",
-				Token:        "39048567301249586",
-				RefreshToken: "01938467501934651",
-				CreatedAt:    time.Now().Format(time.RFC3339),
-				UpdatedAt:    time.Now().Format(time.RFC3339),
-			},
-			mockResRows: []string{"id", "fullname", "email", "username", "password", "token", "created", "updated", "refreshtoken"},
-			mockResErrs: nil,
-		},
-		{
-			name:        "Sad Path: validation error, missing query",
-			db:          db,
-			ctx:         context.Background(),
-			query:       "",
-			want:        nil,
-			mockResRows: []string{},
-			mockResErrs: []error{fmt.Errorf("missing query/statement")},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			s := &Service{
-				db: tt.db,
-			}
-
-			if tt.want != nil {
-				mock.ExpectQuery(regexp.QuoteMeta(tt.query)).WillReturnRows(sqlmock.NewRows([]string{"id", "fullname", "email", "username", "password", "token", "created", "updated", "refreshtoken"}).AddRow(tt.want.ID, tt.want.FullName, tt.want.Email, tt.want.Username, tt.want.Password, tt.want.Token, tt.want.CreatedAt, tt.want.UpdatedAt, tt.want.RefreshToken))
-			}
-			got, got1 := s.FindUser(tt.ctx, tt.query)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("FindUser() got = %v, want %v", got, tt.want)
-			}
-			if !reflect.DeepEqual(got1, tt.mockResErrs) {
-				t.Errorf("FindUser() got1 = %v, want %v", got1, tt.mockResErrs)
-			}
-		})
-	}
-}
 
 func TestService_InsertNewUser(t *testing.T) {
 	db, mock, _ := sqlmock.New()
@@ -150,6 +91,69 @@ func TestService_UpdateAllTokens(t *testing.T) {
 			mock.ExpectExec(regexp.QuoteMeta(tt.exec)).WillReturnResult(sqlmock.NewResult(tt.wantLastInsertedId, tt.wantRowsAffected))
 			if err := s.InsertOne(tt.ctx, tt.exec); (err != nil) != tt.wantErr {
 				t.Errorf("InsertOne() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestService_FindUser(t *testing.T) {
+	db, mock, _ := sqlmock.New()
+	tests := []struct {
+		name        string
+		db          *sql.DB
+		ctx         context.Context
+		query       string
+		want        *models.UserParsedResponse
+		mockResRows []string
+		mockResErrs []error
+		mockShows   []uint8
+	}{
+		{
+			name:  "Happy Path",
+			db:    db,
+			ctx:   context.Background(),
+			query: fmt.Sprintf(FindUserByEmail, "TestUsername"),
+			want: &models.UserParsedResponse{
+				ID:           "542113",
+				FullName:     "Test User",
+				Email:        "test@email.com",
+				Username:     "testusername123",
+				Password:     "password123",
+				Token:        "39048567301249586",
+				RefreshToken: "01938467501934651",
+				Shows:        []string{},
+				CreatedAt:    time.Now().Format(time.RFC3339),
+				UpdatedAt:    time.Now().Format(time.RFC3339),
+			},
+			mockShows:   []uint8{},
+			mockResRows: []string{"id", "fullname", "email", "username", "password", "token", "refreshtoken", "created", "updated", "shows"},
+			mockResErrs: nil,
+		},
+		{
+			name:        "Sad Path: validation error, missing query",
+			db:          db,
+			ctx:         context.Background(),
+			query:       "",
+			want:        nil,
+			mockResRows: []string{},
+			mockResErrs: []error{fmt.Errorf("missing query/statement")},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := &Service{
+				db: tt.db,
+			}
+
+			if tt.want != nil {
+				mock.ExpectQuery(regexp.QuoteMeta(tt.query)).WillReturnRows(sqlmock.NewRows([]string{"id", "fullname", "email", "username", "password", "token", "refreshtoken", "created", "updated", "shows"}).AddRow(tt.want.ID, tt.want.FullName, tt.want.Email, tt.want.Username, tt.want.Password, tt.want.Token, tt.want.RefreshToken, tt.want.CreatedAt, tt.want.UpdatedAt, pq.Array(tt.want.Shows)))
+			}
+			got, got1 := s.FindUser(tt.ctx, tt.query)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("FindUser() got = %v, want %v", got, tt.want)
+			}
+			if !reflect.DeepEqual(got1, tt.mockResErrs) {
+				t.Errorf("FindUser() got1 = %v, want %v", got1, tt.mockResErrs)
 			}
 		})
 	}

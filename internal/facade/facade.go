@@ -102,7 +102,6 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 	}
 	response.Message = message
 	log.Infof("New user %v registered", response.User.Username)
-
 	return response
 }
 
@@ -151,7 +150,7 @@ func (s *Service) LoginUser(ctx context.Context, userRequest models.User) models
 	response.Message = message
 	foundUser.Token = token
 	foundUser.RefreshToken = refreshToken
-	response.User = foundUser
+	response.User = mapUserPublicData(foundUser)
 	log.Infof("User %v logged in", response.User.Username)
 	return response
 }
@@ -173,7 +172,7 @@ func (s *Service) GetUser(ctx context.Context, id string) models.UserResponse {
 	message.Status = strconv.Itoa(http.StatusOK)
 	message.Count = 1
 	response.Message = message
-	response.User = foundUser
+	response.User = mapUserPublicData(foundUser)
 	return response
 }
 
@@ -212,14 +211,14 @@ func (s *Service) GetShow(ctx context.Context, req models.GetShowRequest) models
 func (s *Service) AddUserShow(ctx context.Context, request models.AddUserShowRequest) models.AddShowResponse {
 	var response models.AddShowResponse
 	var message models.Message
-	var exec string
-	var shows []string
-	shows = append(shows, request.Date)
-	//u := s.GetUser(ctx, request.Id)
-	//TODO fix duplicates
-	exec = fmt.Sprintf(psql.AddUserShow, shows, request.Id)
-
+	u := s.GetUser(ctx, request.Id)
+	if containsStr(u.User.Shows, request.Date) {
+		log.Infof("Show %v not added, already exists", request.Date)
+		return response
+	}
+	exec := fmt.Sprintf(psql.AddUserShow, request.Date, request.Id)
 	err := s.PsqlService.InsertOne(ctx, exec)
+
 	if err != nil {
 		message.ErrorLog = errorLogs([]error{err}, "Add User Show error", http.StatusInternalServerError)
 		message.Status = strconv.Itoa(http.StatusInternalServerError)
@@ -231,6 +230,18 @@ func (s *Service) AddUserShow(ctx context.Context, request models.AddUserShowReq
 	message.Status = strconv.Itoa(http.StatusOK)
 	message.Count = 1
 	return response
+}
+
+func mapUserPublicData(user *models.UserParsedResponse) *models.UserParsedResponse {
+	var res models.UserParsedResponse
+	res.Username = user.Username
+	res.Shows = user.Shows
+	res.Email = user.Email
+	res.ID = user.ID
+	res.Token = user.Token
+	res.RefreshToken = user.RefreshToken
+	res.FullName = user.FullName
+	return &res
 }
 
 func (s Service) updateUserTokens(ctx context.Context, user models.User, updated string) (string, string, error) {
@@ -263,4 +274,13 @@ func errorLogs(errors []error, rootCause string, status int) []models.ErrorLog {
 		})
 	}
 	return errLogs
+}
+
+func containsStr(s []string, e string) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }

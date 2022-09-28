@@ -22,7 +22,4 @@ const (
 	AddUserShow = `update public.users 
 			set shows = array_append(shows, '%s')
 			where id = '%s';`
-	//AddUserShow = `select array(select distinct unnest(shows || '{%s}'))
-	//		from public.users
-	//		where id = '%s';`
 )
