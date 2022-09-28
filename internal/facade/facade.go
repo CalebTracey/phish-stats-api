@@ -83,7 +83,7 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 	exec := fmt.Sprintf(psql.AddUser, u.ID, u.FullName, u.Email, u.Username, pwHash, token, refreshToken, created, updated, shows)
 
 	_, errs := s.PsqlService.InsertNewUser(ctx, exec)
-	if errs != nil && len(errs) > 0 {
+	if len(errs) > 0 {
 		for _, err := range errs {
 			log.Warnf("insert new user error: %v", err.Error())
 		}
@@ -114,7 +114,7 @@ func (s *Service) LoginUser(ctx context.Context, userRequest models.User) models
 	foundUserExec := fmt.Sprintf(psql.FindUserByEmail, userRequest.Email)
 	foundUser, errs := s.PsqlService.FindUser(ctx, foundUserExec)
 
-	if errs != nil && len(errs) > 0 {
+	if len(errs) > 0 {
 		message.ErrorLog = errorLogs(errs, "User not found", http.StatusNotFound)
 		message.Status = strconv.Itoa(http.StatusNotFound)
 		response.User = &models.UserParsedResponse{}
@@ -124,7 +124,7 @@ func (s *Service) LoginUser(ctx context.Context, userRequest models.User) models
 
 	passwordIsValid, msg := s.AuthService.VerifyPassword(userRequest.Password, foundUser.Password)
 
-	if passwordIsValid != true {
+	if !passwordIsValid {
 		message.ErrorLog = errorLogs([]error{fmt.Errorf(msg)}, fmt.Sprintf("Verification error %v", userRequest.Email), http.StatusInternalServerError)
 		message.Status = strconv.Itoa(http.StatusInternalServerError)
 		response.User = &models.UserParsedResponse{}
@@ -161,7 +161,7 @@ func (s *Service) GetUser(ctx context.Context, id string) models.UserResponse {
 
 	foundUserExec := fmt.Sprintf(psql.FindUserById, id)
 	foundUser, errs := s.PsqlService.FindUser(ctx, foundUserExec)
-	if errs != nil && len(errs) > 0 {
+	if len(errs) > 0 {
 		message.ErrorLog = errorLogs(errs, "User not found", http.StatusNotFound)
 		message.Status = strconv.Itoa(http.StatusNotFound)
 		response.User = &models.UserParsedResponse{}

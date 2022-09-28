@@ -46,7 +46,7 @@ func (s Service) VerifyPassword(userPassword string, providedPassword string) (b
 	msg := ""
 
 	if err != nil {
-		msg = fmt.Sprintf("login or password is incorrect")
+		msg = "login or password is incorrect"
 		check = false
 	}
 
@@ -74,6 +74,10 @@ func (s Service) GenerateAllTokens(user models.User) (signedToken string, signed
 	}
 
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(SecretKey))
+	if err != nil {
+		log.Panic(err)
+		return
+	}
 	refreshToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims).SignedString([]byte(SecretKey))
 
 	if err != nil {
