@@ -104,7 +104,6 @@ func (h Handler) GetShowHandler() http.HandlerFunc {
 		var response models.ShowResponse
 
 		defer func() {
-			//response, status := setUserResponse(response)
 			status, _ := strconv.Atoi(response.Message.Status)
 			response.Message.TimeTaken = time.Since(startTime).String()
 			_ = json.NewEncoder(writeHeader(w, status)).Encode(response)
