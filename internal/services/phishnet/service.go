@@ -3,17 +3,18 @@ package phishnet
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	config "github.com/calebtracey/config-yaml"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 )
 
 //go:generate mockgen -destination=mockService.go -package=phishnet . ServiceI
 type ServiceI interface {
-	GetShow(ctx context.Context, method string) (ShowResponse, error)
+	GetShow(ctx context.Context, method string) (PNShowResponse, error)
 }
 
 type Service struct {
@@ -42,20 +43,18 @@ func InitializePhishNetService(config *config.Config) (*Service, error) {
 	}, nil
 }
 
-func (s *Service) GetShow(ctx context.Context, date string) (ShowResponse, error) {
-	var response ShowResponse
-
-	apiUrl := s.BaseUrl + "/setlists/showdate/" + date + s.Format + "?" + s.ApiKeyUri
-	logrus.Infoln(apiUrl)
-	req, _ := http.NewRequestWithContext(ctx, "GET", apiUrl, nil)
-	req.Header.Add("Accept", "application/json")
+func (s *Service) GetShow(ctx context.Context, date string) (PNShowResponse, error) {
+	var response PNShowResponse
+	req, reqErr := newPhishNetRequest(ctx, s.BaseUrl+"/setlists/showdate/"+date+s.Format+"?"+s.ApiKeyUri)
+	if reqErr != nil {
+		return response, reqErr
+	}
 
 	resp, err := s.Client.Do(req)
-
 	if err != nil {
 		return response, err
 	}
-	responseBody, readErr := ioutil.ReadAll(resp.Body)
+	responseBody, readErr := io.ReadAll(resp.Body)
 	if err != nil {
 		return response, readErr
 	}
@@ -64,5 +63,19 @@ func (s *Service) GetShow(ctx context.Context, date string) (ShowResponse, error
 		return response, unmarshallErr
 	}
 
+	if response.Error {
+		return response, fmt.Errorf(response.ErrorMessage)
+	}
+
 	return response, nil
+}
+
+func newPhishNetRequest(ctx context.Context, url string) (*http.Request, error) {
+	logrus.Infoln(url)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Accept", "application/json")
+	return req, nil
 }

@@ -20,16 +20,17 @@ import (
 type ServiceI interface {
 	LoginUser(ctx context.Context, userRequest models.User) models.UserResponse
 	RegisterUser(ctx context.Context, userRequest models.User) models.UserResponse
-	GetShow(ctx context.Context, req models.GetShowRequest) models.GetShowResponse
+	GetShow(ctx context.Context, req models.GetShowRequest) models.ShowResponse
 	GetUser(ctx context.Context, id string) models.UserResponse
 	AddUserShow(ctx context.Context, request models.AddUserShowRequest) models.AddShowResponse
 }
 
 type Service struct {
-	PsqlService     psql.ServiceI
-	PhishNetService phishnet.ServiceI
-	AuthService     auth.ServiceI
-	Validator       *validator.Validate
+	PsqlService psql.ServiceI
+	PNService   phishnet.ServiceI
+	AuthService auth.ServiceI
+	PNMapper    phishnet.MapperI
+	Validator   *validator.Validate
 }
 
 func NewService(appConfig *config.Config) (Service, error) {
@@ -44,10 +45,11 @@ func NewService(appConfig *config.Config) (Service, error) {
 		return Service{}, err
 	}
 	return Service{
-		PsqlService:     psqlService,
-		PhishNetService: phishNetService,
-		AuthService:     auth.Service{},
-		Validator:       validate,
+		PsqlService: psqlService,
+		PNService:   phishNetService,
+		AuthService: auth.Service{},
+		PNMapper:    phishnet.Mapper{},
+		Validator:   validate,
 	}, nil
 }
 
@@ -70,7 +72,7 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 	updated := u.UpdatedAt.String()
 	pwHash := s.AuthService.HashPassword(u.Password)
 
-	// if user was inserted successfully, create auth tokens for response
+	// if a user was inserted successfully, create auth tokens for response
 	token, refreshToken, err := s.updateUserTokens(ctx, userRequest, updated)
 	if err != nil {
 		message.ErrorLog = errorLogs([]error{err}, "Token update error", http.StatusInternalServerError)
@@ -176,35 +178,19 @@ func (s *Service) GetUser(ctx context.Context, id string) models.UserResponse {
 	return response
 }
 
-func (s *Service) GetShow(ctx context.Context, req models.GetShowRequest) models.GetShowResponse {
-	var response models.GetShowResponse
-	var songs []models.Song
+func (s *Service) GetShow(ctx context.Context, req models.GetShowRequest) (response models.ShowResponse) {
 	var message models.Message
-
-	showData, err := s.PhishNetService.GetShow(ctx, req.Date)
-
+	pnResponse, err := s.PNService.GetShow(ctx, req.Date)
 	if err != nil {
 		message.ErrorLog = errorLogs([]error{err}, "Get show error", http.StatusInternalServerError)
 		message.Status = strconv.Itoa(http.StatusInternalServerError)
 		response.Message = message
 		return response
 	}
-
-	for _, data := range showData.Data {
-		songs = append(songs, models.Song{
-			Title:     data.Song,
-			TrackTime: data.Tracktime,
-		})
-	}
-
-	response.Show = models.Show{
-		Date:  showData.Data[0].Showdate,
-		Venue: showData.Data[0].Venue,
-		Songs: songs,
-	}
-
+	response = s.PNMapper.PhishNetResponseToShowResponse(pnResponse)
 	message.Status = strconv.Itoa(http.StatusOK)
 	message.Count = 1
+
 	return response
 }
 
@@ -229,6 +215,7 @@ func (s *Service) AddUserShow(ctx context.Context, request models.AddUserShowReq
 	response.Date = request.Date
 	message.Status = strconv.Itoa(http.StatusOK)
 	message.Count = 1
+	response.Message = message
 	return response
 }
 
@@ -244,7 +231,7 @@ func mapUserPublicData(user *models.UserParsedResponse) *models.UserParsedRespon
 	return &res
 }
 
-func (s Service) updateUserTokens(ctx context.Context, user models.User, updated string) (string, string, error) {
+func (s *Service) updateUserTokens(ctx context.Context, user models.User, updated string) (string, string, error) {
 	token, refreshToken, _ := s.AuthService.GenerateAllTokens(user)
 	exec := fmt.Sprintf(psql.UpdateTokens, token, refreshToken, updated, user.ID)
 	err := s.PsqlService.InsertOne(ctx, exec)

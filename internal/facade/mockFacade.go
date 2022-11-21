@@ -50,10 +50,10 @@ func (mr *MockServiceIMockRecorder) AddUserShow(arg0, arg1 interface{}) *gomock.
 }
 
 // GetShow mocks base method.
-func (m *MockServiceI) GetShow(arg0 context.Context, arg1 models.GetShowRequest) models.GetShowResponse {
+func (m *MockServiceI) GetShow(arg0 context.Context, arg1 models.GetShowRequest) models.ShowResponse {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetShow", arg0, arg1)
-	ret0, _ := ret[0].(models.GetShowResponse)
+	ret0, _ := ret[0].(models.ShowResponse)
 	return ret0
 }
 

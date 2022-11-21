@@ -1,12 +1,12 @@
 package phishnet
 
-type ShowResponse struct {
-	Error        bool   `json:"error"`
-	ErrorMessage string `json:"error_message"`
-	Data         []Data `json:"data"`
+type PNShowResponse struct {
+	Error        bool         `json:"error"`
+	ErrorMessage string       `json:"error_message"`
+	Data         []PNShowData `json:"data"`
 }
 
-type Data struct {
+type PNShowData struct {
 	Showid              string `json:"showid"`
 	Showdate            string `json:"showdate"`
 	Permalink           string `json:"permalink"`

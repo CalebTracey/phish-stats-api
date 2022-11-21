@@ -28,6 +28,8 @@ type Show struct {
 }
 
 type Song struct {
-	Title     string
-	TrackTime string
+	SongID    string `json:"songid,omitempty"`
+	Title     string `json:"title,omitempty"`
+	TrackTime string `json:"tracktime,omitempty"`
+	Gap       string `json:"gap,omitempty"`
 }
