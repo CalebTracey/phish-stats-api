@@ -18,10 +18,10 @@ func TestService_GetShow(t *testing.T) {
 			if req.Header.Get("Accept") != "application/json" {
 				t.Errorf("Expected Accept: application/json header, got: %s", req.Header.Get("Accept"))
 			}
-			resp, err := httpmock.NewJsonResponse(200, ShowResponse{
+			resp, err := httpmock.NewJsonResponse(200, PNShowResponse{
 				Error:        false,
 				ErrorMessage: "",
-				Data: []Data{
+				Data: []PNShowData{
 					{
 						Showdate: "11/10/1991",
 						Song:     "song 1",
@@ -62,7 +62,7 @@ func TestService_GetShow(t *testing.T) {
 		fields  fields
 		ctx     context.Context
 		date    string
-		want    ShowResponse
+		want    PNShowResponse
 		wantErr bool
 	}{
 		{
@@ -75,10 +75,10 @@ func TestService_GetShow(t *testing.T) {
 			},
 			ctx:  context.Background(),
 			date: "11/10/1991",
-			want: ShowResponse{
+			want: PNShowResponse{
 				Error:        false,
 				ErrorMessage: "",
-				Data: []Data{
+				Data: []PNShowData{
 					{
 						Showdate: "11/10/1991",
 						Song:     "song 1",
@@ -105,7 +105,7 @@ func TestService_GetShow(t *testing.T) {
 			},
 			ctx:     context.Background(),
 			date:    "11/10/1991",
-			want:    ShowResponse{},
+			want:    PNShowResponse{},
 			wantErr: true,
 		},
 	}

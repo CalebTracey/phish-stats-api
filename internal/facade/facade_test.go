@@ -102,10 +102,10 @@ func TestService_LoginUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Service{
-				PsqlService:     tt.fields.PsqlService,
-				PhishNetService: tt.fields.PhishNetService,
-				AuthService:     tt.fields.AuthService,
-				Validator:       tt.fields.Validator,
+				PsqlService: tt.fields.PsqlService,
+				PNService:   tt.fields.PhishNetService,
+				AuthService: tt.fields.AuthService,
+				Validator:   tt.fields.Validator,
 			}
 			mockPsqlSvc.EXPECT().FindUser(tt.ctx, tt.query).Return(tt.mockResponse, tt.mockErrs)
 			mockAuthSvc.EXPECT().VerifyPassword(gomock.Any(), gomock.Any()).Return(tt.wantVerify, tt.wantVerifyMsg)
@@ -188,10 +188,10 @@ func TestService_RegisterUser(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Service{
-				PsqlService:     tt.fields.PsqlService,
-				PhishNetService: tt.fields.PhishNetService,
-				AuthService:     tt.fields.AuthService,
-				Validator:       tt.fields.Validator,
+				PsqlService: tt.fields.PsqlService,
+				PNService:   tt.fields.PhishNetService,
+				AuthService: tt.fields.AuthService,
+				Validator:   tt.fields.Validator,
 			}
 			mockPsqlSvc.EXPECT().InsertNewUser(tt.ctx, gomock.Any()).Return(tt.mockRes, tt.execErrs)
 			mockAuthSvc.EXPECT().HashPassword(tt.userRequest.Password).Return(tt.mockHash)
@@ -211,12 +211,13 @@ func TestService_GetShow(t *testing.T) {
 	mockPsqlSvc := psql.NewMockServiceI(ctrl)
 	mockPhNetSvc := phishnet.NewMockServiceI(ctrl)
 	mockAuthSvc := auth.NewMockServiceI(ctrl)
-
+	mockMapper := phishnet.NewMockMapperI(ctrl)
 	type fields struct {
-		PsqlService     psql.ServiceI
-		PhishNetService phishnet.ServiceI
-		AuthService     auth.ServiceI
-		Validator       *validator.Validate
+		PsqlService psql.ServiceI
+		PNService   phishnet.ServiceI
+		AuthService auth.ServiceI
+		PNMapper    phishnet.MapperI
+		Validator   *validator.Validate
 	}
 
 	tests := []struct {
@@ -224,21 +225,22 @@ func TestService_GetShow(t *testing.T) {
 		fields       fields
 		ctx          context.Context
 		req          models.GetShowRequest
-		want         models.GetShowResponse
-		mockResponse phishnet.ShowResponse
+		want         models.ShowResponse
+		mockResponse phishnet.PNShowResponse
 		mockErr      error
 	}{
 		{
 			name: "Happy Path",
 			fields: fields{
-				PsqlService:     mockPsqlSvc,
-				PhishNetService: mockPhNetSvc,
-				AuthService:     mockAuthSvc,
-				Validator:       validator.New(),
+				PsqlService: mockPsqlSvc,
+				PNService:   mockPhNetSvc,
+				AuthService: mockAuthSvc,
+				PNMapper:    mockMapper,
+				Validator:   validator.New(),
 			},
 			ctx: context.Background(),
 			req: models.GetShowRequest{Date: "11/10/1991"},
-			want: models.GetShowResponse{
+			want: models.ShowResponse{
 				Show: models.Show{
 					Date: "11/10/1991",
 					Songs: []models.Song{
@@ -255,10 +257,10 @@ func TestService_GetShow(t *testing.T) {
 				},
 				Message: models.Message{},
 			},
-			mockResponse: phishnet.ShowResponse{
+			mockResponse: phishnet.PNShowResponse{
 				Error:        false,
 				ErrorMessage: "",
-				Data: []phishnet.Data{
+				Data: []phishnet.PNShowData{
 					{
 						Showdate: "11/10/1991",
 						Song:     "song 1",
@@ -279,12 +281,15 @@ func TestService_GetShow(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			s := &Service{
-				PsqlService:     tt.fields.PsqlService,
-				PhishNetService: tt.fields.PhishNetService,
-				AuthService:     tt.fields.AuthService,
-				Validator:       tt.fields.Validator,
+				PsqlService: tt.fields.PsqlService,
+				PNService:   tt.fields.PNService,
+				AuthService: tt.fields.AuthService,
+				PNMapper:    tt.fields.PNMapper,
+				Validator:   tt.fields.Validator,
 			}
+			mockMapper.EXPECT().PhishNetResponseToShowResponse(gomock.Any()).Return(tt.want)
 			mockPhNetSvc.EXPECT().GetShow(tt.ctx, tt.req.Date).Return(tt.mockResponse, tt.mockErr)
+
 			if got := s.GetShow(tt.ctx, tt.req); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("GetShow() = %v, want %v", got, tt.want)
 			}

@@ -7,7 +7,7 @@ type AuthResponse struct {
 	Message  Message
 }
 
-type GetShowResponse struct {
+type ShowResponse struct {
 	Show    Show
 	Message Message
 }

@@ -35,10 +35,10 @@ func (m *MockServiceI) EXPECT() *MockServiceIMockRecorder {
 }
 
 // GetShow mocks base method.
-func (m *MockServiceI) GetShow(arg0 context.Context, arg1 string) (ShowResponse, error) {
+func (m *MockServiceI) GetShow(arg0 context.Context, arg1 string) (PNShowResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetShow", arg0, arg1)
-	ret0, _ := ret[0].(ShowResponse)
+	ret0, _ := ret[0].(PNShowResponse)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

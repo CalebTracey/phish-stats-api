@@ -1,13 +1,14 @@
 package routes
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/calebtracey/phish-stats-api/internal/facade"
 	"github.com/calebtracey/phish-stats-api/internal/models"
 	"github.com/calebtracey/phish-stats-api/internal/services/auth"
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -52,14 +53,13 @@ func (h Handler) RegistrationHandler() http.HandlerFunc {
 			response, status := setUserResponse(response)
 			_ = json.NewEncoder(writeHeader(w, status)).Encode(response)
 		}()
+		body, bodyErr := readBody(r.Body)
 
-		requestBody, readErr := ioutil.ReadAll(r.Body)
-
-		if readErr != nil {
-			response.Message.ErrorLog = errorLogs([]error{readErr}, "Unable to read request body", http.StatusBadRequest)
+		if bodyErr != nil {
+			response.Message.ErrorLog = errorLogs([]error{bodyErr}, "Unable to read request body", http.StatusBadRequest)
 			return
 		}
-		err := json.Unmarshal(requestBody, &request)
+		err := json.Unmarshal(body, &request)
 		if err != nil {
 			response.Message.ErrorLog = errorLogs([]error{err}, "Unable to parse request", http.StatusBadRequest)
 			return
@@ -81,13 +81,13 @@ func (h Handler) LoginHandler() http.HandlerFunc {
 			_ = json.NewEncoder(writeHeader(w, status)).Encode(response)
 		}()
 
-		requestBody, readErr := ioutil.ReadAll(r.Body)
+		body, bodyErr := readBody(r.Body)
 
-		if readErr != nil {
-			response.Message.ErrorLog = errorLogs([]error{readErr}, "Unable to read request body", http.StatusBadRequest)
+		if bodyErr != nil {
+			response.Message.ErrorLog = errorLogs([]error{bodyErr}, "Unable to read request body", http.StatusBadRequest)
 			return
 		}
-		err := json.Unmarshal(requestBody, &request)
+		err := json.Unmarshal(body, &request)
 		if err != nil {
 			response.Message.ErrorLog = errorLogs([]error{err}, "Unable to parse request", http.StatusBadRequest)
 			return
@@ -100,7 +100,8 @@ func (h Handler) LoginHandler() http.HandlerFunc {
 func (h Handler) GetShowHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		startTime := time.Now()
-		var response models.GetShowResponse
+		var request models.GetShowRequest
+		var response models.ShowResponse
 
 		defer func() {
 			//response, status := setUserResponse(response)
@@ -108,14 +109,13 @@ func (h Handler) GetShowHandler() http.HandlerFunc {
 			response.Message.TimeTaken = time.Since(startTime).String()
 			_ = json.NewEncoder(writeHeader(w, status)).Encode(response)
 		}()
-		var request models.GetShowRequest
-		requestBody, readErr := ioutil.ReadAll(r.Body)
+		body, bodyErr := readBody(r.Body)
 
-		if readErr != nil {
-			response.Message.ErrorLog = errorLogs([]error{readErr}, "Unable to read request body", http.StatusBadRequest)
+		if bodyErr != nil {
+			response.Message.ErrorLog = errorLogs([]error{bodyErr}, "Unable to read request body", http.StatusBadRequest)
 			return
 		}
-		err := json.Unmarshal(requestBody, &request)
+		err := json.Unmarshal(body, &request)
 		if err != nil {
 			response.Message.ErrorLog = errorLogs([]error{err}, "Unable to parse request", http.StatusBadRequest)
 			return
@@ -138,14 +138,13 @@ func (h Handler) AddUserShowHandler() http.HandlerFunc {
 			response.Message.TimeTaken = time.Since(startTime).String()
 			_ = json.NewEncoder(writeHeader(w, status)).Encode(response)
 		}()
+		body, bodyErr := readBody(r.Body)
 
-		requestBody, readErr := ioutil.ReadAll(r.Body)
-
-		if readErr != nil {
-			response.Message.ErrorLog = errorLogs([]error{readErr}, "Unable to read request body", http.StatusBadRequest)
+		if bodyErr != nil {
+			response.Message.ErrorLog = errorLogs([]error{bodyErr}, "Unable to read request body", http.StatusBadRequest)
 			return
 		}
-		err := json.Unmarshal(requestBody, &request)
+		err := json.Unmarshal(body, &request)
 		if err != nil {
 			response.Message.ErrorLog = errorLogs([]error{err}, "Unable to parse request", http.StatusBadRequest)
 			return
@@ -208,6 +207,16 @@ func writeHeader(w http.ResponseWriter, code int) http.ResponseWriter {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.WriteHeader(code)
 	return w
+}
+
+func readBody(body io.ReadCloser) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	_, copyErr := io.Copy(buf, body)
+
+	if copyErr != nil {
+		return nil, copyErr
+	}
+	return buf.Bytes(), nil
 }
 
 func errorLogs(errors []error, rootCause string, status int) []models.ErrorLog {
