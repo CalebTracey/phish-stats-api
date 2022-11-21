@@ -29,6 +29,7 @@ type Service struct {
 	PsqlService psql.ServiceI
 	PNService   phishnet.ServiceI
 	AuthService auth.ServiceI
+	PSQLMapper  psql.MapperI
 	PNMapper    phishnet.MapperI
 	Validator   *validator.Validate
 }
@@ -48,6 +49,7 @@ func NewService(appConfig *config.Config) (Service, error) {
 		PsqlService: psqlService,
 		PNService:   phishNetService,
 		AuthService: auth.Service{},
+		PSQLMapper:  psql.Mapper{},
 		PNMapper:    phishnet.Mapper{},
 		Validator:   validate,
 	}, nil
@@ -58,7 +60,6 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 	var message models.Message
 
 	validationErr := s.Validator.Struct(userRequest)
-
 	if validationErr != nil {
 		message.ErrorLog = errorLogs([]error{validationErr}, "Validation error", http.StatusBadRequest)
 		message.Status = strconv.Itoa(http.StatusBadRequest)
@@ -66,14 +67,11 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 		response.User = &models.UserParsedResponse{}
 		return response
 	}
-
 	u := updateUserRequest(userRequest)
-	created := u.CreatedAt.String()
-	updated := u.UpdatedAt.String()
 	pwHash := s.AuthService.HashPassword(u.Password)
 
 	// if a user was inserted successfully, create auth tokens for response
-	token, refreshToken, err := s.updateUserTokens(ctx, userRequest, updated)
+	token, refreshToken, err := s.updateUserTokens(ctx, userRequest, u.UpdatedAt.String())
 	if err != nil {
 		message.ErrorLog = errorLogs([]error{err}, "Token update error", http.StatusInternalServerError)
 		message.Status = strconv.Itoa(http.StatusInternalServerError)
@@ -81,8 +79,7 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 		response.Message = message
 		return response
 	}
-	var shows []string
-	exec := fmt.Sprintf(psql.AddUser, u.ID, u.FullName, u.Email, u.Username, pwHash, token, refreshToken, created, updated, shows)
+	exec := s.PSQLMapper.CreatePSQLUserExec(u, pwHash, token, refreshToken)
 
 	_, errs := s.PsqlService.InsertNewUser(ctx, exec)
 	if len(errs) > 0 {
@@ -93,7 +90,6 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 		message.ErrorLog = errorLogs(errs, "New user error", http.StatusInternalServerError)
 		message.Status = strconv.Itoa(http.StatusInternalServerError)
 	}
-
 	message.Status = strconv.Itoa(http.StatusOK)
 	message.Count = 1
 	response.User = &models.UserParsedResponse{
@@ -104,6 +100,7 @@ func (s *Service) RegisterUser(ctx context.Context, userRequest models.User) mod
 	}
 	response.Message = message
 	log.Infof("New user %v registered", response.User.Username)
+
 	return response
 }
 

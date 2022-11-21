@@ -127,11 +127,12 @@ func TestService_RegisterUser(t *testing.T) {
 	mockPsqlSvc := psql.NewMockServiceI(ctrl)
 	mockPhNetSvc := phishnet.NewMockServiceI(ctrl)
 	mockAuthSvc := auth.NewMockServiceI(ctrl)
-
+	mockMapper := psql.NewMockMapperI(ctrl)
 	type fields struct {
 		PsqlService     psql.ServiceI
 		PhishNetService phishnet.ServiceI
 		AuthService     auth.ServiceI
+		PSQLMapper      psql.MapperI
 		Validator       *validator.Validate
 	}
 
@@ -153,6 +154,7 @@ func TestService_RegisterUser(t *testing.T) {
 				PsqlService:     mockPsqlSvc,
 				PhishNetService: mockPhNetSvc,
 				AuthService:     mockAuthSvc,
+				PSQLMapper:      mockMapper,
 				Validator:       validator.New(),
 			},
 			ctx: context.Background(),
@@ -191,8 +193,10 @@ func TestService_RegisterUser(t *testing.T) {
 				PsqlService: tt.fields.PsqlService,
 				PNService:   tt.fields.PhishNetService,
 				AuthService: tt.fields.AuthService,
+				PSQLMapper:  tt.fields.PSQLMapper,
 				Validator:   tt.fields.Validator,
 			}
+			mockMapper.EXPECT().CreatePSQLUserExec(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("")
 			mockPsqlSvc.EXPECT().InsertNewUser(tt.ctx, gomock.Any()).Return(tt.mockRes, tt.execErrs)
 			mockAuthSvc.EXPECT().HashPassword(tt.userRequest.Password).Return(tt.mockHash)
 			mockAuthSvc.EXPECT().GenerateAllTokens(gomock.Any()).Return("39048567301249586", "01938467501934651", tt.wantGenErr)
