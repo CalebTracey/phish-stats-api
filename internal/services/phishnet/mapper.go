@@ -10,19 +10,21 @@ type MapperI interface {
 type Mapper struct{}
 
 func (m Mapper) PhishNetResponseToShowResponse(pnResponse PNShowResponse) (response models.ShowResponse) {
-	var songs []models.Song
-	for _, data := range pnResponse.Data {
-		songs = append(songs, models.Song{
-			Title:     data.Song,
-			TrackTime: data.Tracktime,
-		})
-	}
+	var show models.Show
 
-	response.Show = models.Show{
-		Date:  pnResponse.Data[0].Showdate,
-		Venue: pnResponse.Data[0].Venue,
-		Songs: songs,
+	if len(pnResponse.Data) > 0 {
+		show.Venue = pnResponse.Data[0].Venue
+		show.Date = pnResponse.Data[0].Showdate
+		for _, data := range pnResponse.Data {
+			show.Songs = append(show.Songs, models.Song{
+				SongID:    data.Songid,
+				Title:     data.Song,
+				TrackTime: data.Tracktime,
+				Gap:       data.Gap,
+			})
+		}
 	}
+	response.Show = show
 
 	return response
 }

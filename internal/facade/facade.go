@@ -48,6 +48,7 @@ func NewService(appConfig *config.Config) (Service, error) {
 		PsqlService: psqlService,
 		PNService:   phishNetService,
 		AuthService: auth.Service{},
+		PNMapper:    phishnet.Mapper{},
 		Validator:   validate,
 	}, nil
 }
